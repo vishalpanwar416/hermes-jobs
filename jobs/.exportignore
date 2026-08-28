@@ -1,0 +1,12 @@
+# Jobs that still run in the live scheduler but are deliberately not tracked
+# here. Without this list, export_jobs.py would recreate them on the next run.
+#
+# Removed 2026-08-28: the Table Tap / Sanero brand-publishing set. These drive
+# posting for separate brand projects and depend on the "Table-Tap media" Node
+# repo, so they belong with that project rather than here.
+tabletap_instagram_post
+tabletap_linkedin_post
+sanero_instagram_post
+sanero_engagement
+# Only useful while an Instagram posting job exists; nothing left here needs it.
+ig_token_refresh

@@ -27,6 +27,7 @@ JOBS_DIR = REPO / "jobs"
 LIVE_JOBS = Path(os.path.expanduser("~/.hermes/cron/jobs.json"))
 TARGETS = JOBS_DIR / "targets.local.json"
 TARGETS_EXAMPLE = JOBS_DIR / "targets.example.json"
+EXPORTIGNORE = JOBS_DIR / ".exportignore"
 
 # Fields that describe the job. Everything else in jobs.json is run state that
 # the scheduler rewrites on every tick.
@@ -56,6 +57,23 @@ DEFINITION_FIELDS = [
 # These turn up in `deliver`, in `origin`, and free-hand inside prompts that
 # tell the agent which chat to post into, so every exported string is swept.
 WA_ID = re.compile(r"\b\d{12,}@(?:g\.us|lid|s\.whatsapp\.net)\b")
+
+
+def load_ignored():
+    """Job names this repo deliberately does not track.
+
+    A job removed from jobs/ but still live in the scheduler would be recreated
+    by the next export, so the exclusion has to be recorded rather than implied
+    by the file's absence.
+    """
+    if not EXPORTIGNORE.exists():
+        return set()
+    names = set()
+    for line in EXPORTIGNORE.read_text().splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            names.add(line)
+    return names
 
 
 def load_targets():
@@ -103,11 +121,16 @@ def export():
     if not LIVE_JOBS.exists():
         sys.exit(f"no live jobs file at {LIVE_JOBS}")
     targets = load_targets()
+    ignored = load_ignored()
     live = json.loads(LIVE_JOBS.read_text())
     JOBS_DIR.mkdir(exist_ok=True)
 
     written = {}
+    skipped = []
     for job in live["jobs"]:
+        if job["name"] in ignored:
+            skipped.append(job["name"])
+            continue
         out = {k: job[k] for k in DEFINITION_FIELDS if job.get(k) not in (None, [], "")}
         out["deliver"] = tokenize(job.get("deliver"), targets)
         # repeat carries a `completed` counter the scheduler bumps every run;
@@ -127,7 +150,7 @@ def export():
     unresolved = sorted(
         {m for body in written.values() for m in re.findall(r"@unknown-\d+", body)}
     )
-    return written, unresolved
+    return written, unresolved, sorted(skipped)
 
 
 def main():
@@ -135,7 +158,11 @@ def main():
     ap.add_argument("--check", action="store_true", help="exit 1 if jobs/ is stale")
     args = ap.parse_args()
 
-    written, unresolved = export()
+    written, unresolved, skipped = export()
+
+    if skipped:
+        print(f"skipped {len(skipped)} job(s) per jobs/.exportignore: "
+              + ", ".join(skipped))
 
     if unresolved:
         print(

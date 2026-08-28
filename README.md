@@ -1,6 +1,6 @@
 # hermes-jobs
 
-The automation that runs on top of [Hermes](https://github.com/NousResearch/hermes-agent): 20 scheduled jobs that apply to job postings, publish and reply to social posts, and keep API tokens alive — plus a small web UI for reading what they actually did.
+The automation that runs on top of [Hermes](https://github.com/NousResearch/hermes-agent): 15 scheduled jobs that apply to job postings and publish and reply to social posts — plus a small web UI for reading what they actually did.
 
 Hermes itself keeps jobs in a single mutable `~/.hermes/cron/jobs.json` and their scripts loose in `~/.hermes/scripts`, neither of which is version controlled. This repo is the source of truth for both.
 
@@ -8,11 +8,14 @@ Hermes itself keeps jobs in a single mutable `~/.hermes/cron/jobs.json` and thei
 
 ```
 jobs/            job definitions, one JSON per job, exported from the live scheduler
+jobs/.exportignore  live jobs this repo deliberately does not track
 scripts/         every script the jobs run, plus the run_*.sh wrappers
 ui/              read-only log viewer (FastAPI + one HTML page)
 export_jobs.py   live jobs.json -> jobs/*.json
 sync.sh          repo scripts/ -> ~/.hermes/scripts
 ```
+
+The brand-publishing jobs (`tabletap_*`, `sanero_*`, `ig_token_refresh`) were removed from this repo on 2026-08-28 — they drive posting for separate brand projects and depend on the `Table-Tap media` Node repo, so they belong with that project. **They still run in the live scheduler**; they are simply not tracked here, which is what `jobs/.exportignore` records. Removing them from this repo does not stop them. To actually stop one: `hermes cron delete <job-id>`.
 
 ## The log viewer
 
@@ -49,6 +52,8 @@ python export_jobs.py           # bring jobs/ back in sync, then commit
 python export_jobs.py --check   # exit 1 if the repo is stale (CI-friendly)
 ```
 
+A job deleted from `jobs/` while it still exists in the scheduler would be recreated by the next export, so untracking one means adding its name to `jobs/.exportignore` as well as deleting the file.
+
 `export_jobs.py` keeps only the fields that define what a job *is*. Run state — `last_status`, `next_run_at`, `fire_claim`, `repeat.completed` — is dropped, so the export is stable between ticks and a diff only appears when something real changed.
 
 ### Delivery targets
@@ -72,26 +77,21 @@ This repo is public, so the WhatsApp group IDs that jobs deliver into are not co
 Most script jobs go through a `run_*.sh` wrapper rather than calling Python directly, because Hermes runs `script` as a *file*, not a shell command — anything multi-step needs a wrapper. Each one sources `_log_preamble.sh`, which tees the whole run to `~/.hermes/logs/pipelines/<name>/` while still writing to stdout, so the agent sees output exactly as before and the detail survives on disk. Python entrypoints get the same thing via `import pipeline_log`.
 
 ```
-cron tick -> run_tabletap_instagram.sh -> _log_preamble.sh (tee to pipeline log)
-                                       -> node src/index.js generate
-                                       -> brand_poster.py   (stamp the logo)
-                                       -> node src/index.js publish
+cron tick -> run_bait_muter.sh -> _log_preamble.sh (tee to pipeline log)
+                               -> mute_bait_accounts.py
+                                    browser_lock.py  (take the Playwright profile)
+                                    job_filter.py    (skip accounts already muted)
 ```
 
 Shared helpers: `pipeline_log.py` (run capture), `browser_lock.py` (one Playwright profile, many jobs — they must not open it concurrently), `social_voice.py` (LLM copy generation), `shared_dedupe.py` and `job_filter.py` (don't reply or apply twice).
 
 ## Secrets
 
-No credential is hardcoded anywhere in `scripts/` — every one is read at runtime from a `.env` outside this tree (`INSTAHYRE_PASSWORD`, `IG_ACCESS_TOKEN`, `OPENROUTER_API_KEY`, and so on). `.gitignore` blocks `.env` files as a second line of defence.
-
-`ig_token_refresh` exists because Instagram long-lived tokens expire after 60 days and nothing warns you: the posting job just starts failing with an OAuth error, and by then the token is unrecoverable. It runs weekly so the token can never get near expiry.
+No credential is hardcoded anywhere in `scripts/` — every one is read at runtime from a `.env` outside this tree (`INSTAHYRE_PASSWORD`, `OPENROUTER_API_KEY`, and so on). `.gitignore` blocks `.env` files as a second line of defence.
 
 ## External dependencies
 
-Two jobs reach outside this repo:
-
-- `cron_missed_replay` runs `python -m cron.missed_queue` from the hermes-agent checkout.
-- `tabletap_instagram_post` and `sanero_instagram_post` run `node src/index.js` in the `Table-Tap media` project.
+`cron_missed_replay` runs `python -m cron.missed_queue` from the hermes-agent checkout; everything else runs from `scripts/`.
 
 ## Known gaps
 
