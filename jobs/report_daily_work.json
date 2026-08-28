@@ -1,0 +1,26 @@
+{
+  "name": "report_daily_work",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 9 * * *",
+    "display": "0 9 * * *"
+  },
+  "schedule_display": "0 9 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "Run the script ~/.hermes/scripts/generate_daily_update.py via python3 in terminal to gather Stacky tasks, git commits, and jobs tracker data, and print the resulting briefing text directly.",
+  "enabled_toolsets": [
+    "terminal",
+    "file",
+    "web"
+  ],
+  "model": "deepseek/deepseek-v4-flash",
+  "deliver": "@work_report",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "94a32c192348"
+}

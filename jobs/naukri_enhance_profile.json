@@ -1,0 +1,24 @@
+{
+  "name": "naukri_enhance_profile",
+  "schedule": {
+    "kind": "once",
+    "run_at": "2026-08-25T23:11:14.374877+05:30",
+    "display": "once in 1m"
+  },
+  "schedule_display": "once in 1m",
+  "repeat": {
+    "times": 1
+  },
+  "enabled": false,
+  "no_agent": false,
+  "prompt": "Run the Naukri profile enhancement script:\n~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/naukri_enhance_profile.py\n\nOutput the full raw JSON result. No interpretation.",
+  "enabled_toolsets": [
+    "terminal",
+    "file"
+  ],
+  "deliver": "origin",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "0b073beb725a"
+}

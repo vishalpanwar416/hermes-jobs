@@ -1,0 +1,19 @@
+{
+  "name": "sanero_instagram_post",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 12,16,20 * * *",
+    "display": "0 12,16,20 * * *"
+  },
+  "schedule_display": "0 12,16,20 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "The script output is from the Sanero Media Instagram publisher. It generates a\nposter plus caption and publishes to the saneromedia Instagram account, the\npage that connects influencers and brands.\n\nReport to this WhatsApp group in two or three lines:\n1. Whether it published. Success looks like \"Published! IG media id: <id>\".\n2. The post concept or title if shown.\n3. If it failed, quote the error verbatim. An OAuth or token error means the\n   Instagram token needs attention, say so plainly. Do not re-run the script.\n\nWriting: no dashes as punctuation, no hashtags, plain sentences.",
+  "script": "run_sanero_instagram.sh",
+  "model": "deepseek/deepseek-v4-flash",
+  "deliver": "@brands",
+  "id": "3eaa9a1c9b66"
+}

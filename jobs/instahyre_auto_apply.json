@@ -1,0 +1,22 @@
+{
+  "name": "instahyre_auto_apply",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 10 * * *",
+    "display": "0 10 * * *"
+  },
+  "schedule_display": "0 10 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "Run the Instahyre auto-apply script. Login with credentials from ~/.hermes/.env (INSTAHYRE_EMAIL and INSTAHYRE_PASSWORD), find matching backend/Go/DevOps jobs, and apply. Report the results.",
+  "script": "instahyre_apply_final.py",
+  "workdir": "/home/vishalpanwar",
+  "deliver": "origin",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "7956c0b02973"
+}

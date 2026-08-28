@@ -1,0 +1,25 @@
+{
+  "name": "social_x_reply_outbound",
+  "schedule": {
+    "kind": "interval",
+    "minutes": 180,
+    "display": "every 180m"
+  },
+  "schedule_display": "every 180m",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "Run the high-signal auto-reply script:\n~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/auto_reply_growth.py\n\nIf any replies were posted:\n- Output a short summary showing the author, the original topic, and the reply posted so Vishal can see his engagement.\nIf no relevant threads were found or no replies were posted, output [SILENT].",
+  "enabled_toolsets": [
+    "terminal",
+    "file"
+  ],
+  "model": "deepseek/deepseek-v4-flash",
+  "deliver": "origin",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "c86ffd7d1391"
+}

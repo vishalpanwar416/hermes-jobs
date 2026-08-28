@@ -1,0 +1,19 @@
+{
+  "name": "naukri_recommended_auto_apply",
+  "schedule": {
+    "kind": "interval",
+    "minutes": 60,
+    "display": "every 60m"
+  },
+  "schedule_display": "every 60m",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "The script output above is a JSON summary from the hourly Naukri recommended-jobs auto-apply run.\n\nFormat it for WhatsApp:\n- If \"applied\" has entries: list each as \"\u2705 Applied: <title> @ <company>\" with the URL.\n- If \"needs_review\" has entries: list each as \"\u270b Needs you: <title> @ <company> \u2014 <detail>\" with the URL (screening questions or unclear confirmation; Vishal must finish these manually).\n- If \"external\" has entries: list each as \"\ud83d\udd17 Company-site apply: <title> @ <company>\" with the URL.\n- End with one line: \"Today: <applied_today_before_run + newly applied>/<daily_cap> applies used.\"\n- If the output contains \"NAUKRI_NOT_LOGGED_IN\": tell Vishal the Naukri session expired and he should run: ~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/naukri_login.py\n- If it contains \"NAUKRI_BLOCKED\": say Naukri bot-wall blocked the run; only alert if this is the first block today, otherwise return [SILENT].\n- If applied, needs_review, external and failed are ALL empty and there is no error: return [SILENT].",
+  "script": "naukri_auto_apply.py",
+  "model": "deepseek/deepseek-v4-flash",
+  "deliver": "@naukri",
+  "id": "910f355518a3"
+}

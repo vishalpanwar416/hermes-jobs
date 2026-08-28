@@ -1,0 +1,23 @@
+# Real delivery addresses (WhatsApp group JIDs). targets.example.json is the
+# committed template; export_jobs.py reads the .local copy to tokenize them.
+jobs/targets.local.json
+
+# Credentials. Every script reads its secrets from a .env outside this tree;
+# this rule exists so a stray copy can never be committed.
+.env
+*.env
+!*.example.env
+
+# Runtime artifacts of the jobs themselves.
+__pycache__/
+*.pyc
+*.log
+logs/
+output/
+*.db
+*.sqlite3
+
+# Playwright / browser profiles the scrapers reuse between runs.
+.browser-profile/
+playwright-state.json
+screenshots/

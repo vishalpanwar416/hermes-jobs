@@ -1,0 +1,25 @@
+{
+  "name": "social_linkedin_comment_outbound",
+  "schedule": {
+    "kind": "interval",
+    "minutes": 240,
+    "display": "every 240m"
+  },
+  "schedule_display": "every 240m",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "LinkedIn growth commenting, two-phase, comments must relate to each specific post.\n\nSTEP 1: Find candidates. Search LinkedIn for posts from tech recruiters, engineering leaders, and founders posting about:\n- Backend engineering, Go, Kubernetes, system design\n- Scalability, microservices, cloud infrastructure\n- RAG, AI agents, MCP, LLM applications\n- Engineering culture, production systems, debugging stories\n\nIMPORTANT: Apply fake job filtering. Skip posts that:\n- Ask for money/upfront payment\n- Have vague company names or no company at all\n- Look like recruitment agency spam with generic descriptions\n- Ask for sensitive personal info (PAN, Aadhaar, bank details) upfront\n- Are from accounts with no profile picture, very few followers, and only job postings\n- Promise unrealistically high salaries for the role/location\n- Use phrases like \"work from home opportunity\", \"earn thousands daily\", \"no experience needed\"\n- Have broken links or suspicious shortened URLs\n- Are obvious \"Cfbr\" (Comment for better reach) chain posts with no real substance\n\nOnly engage with genuine technical posts and authentic job posts from verified company accounts or known recruiters.\n\nSTEP 2: For each candidate, write a SHORT technical comment (2-4 sentences max) that adds value to the discussion. Use the dev-social-growth skill for tone guidance. Never post generic comments like \"Great post!\" or \"Interesting\".",
+  "enabled_toolsets": [
+    "terminal",
+    "file"
+  ],
+  "model": "deepseek/deepseek-v4-flash",
+  "deliver": "origin",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "391784c25fa3"
+}

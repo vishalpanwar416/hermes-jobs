@@ -1,0 +1,25 @@
+{
+  "name": "social_inbound_reply_x_linkedin",
+  "schedule": {
+    "kind": "interval",
+    "minutes": 120,
+    "display": "every 120m"
+  },
+  "schedule_display": "every 120m",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "Run the inbound notifications responder for both X/Twitter and LinkedIn:\n~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/auto_reply_inbound.py\n\nCheck the script output for: replied_to, reply_text, status. If the script failed, report the error.\n\nIMPORTANT: Apply fake job filtering. Skip posts that:\n- Ask for money/upfront payment\n- Have vague company names or no company at all\n- Look like recruitment agency spam with generic descriptions\n- Ask for sensitive personal info (PAN, Aadhaar, bank details) upfront\n- Promise unrealistically high salaries for the role/location\n- Use phrases like \"work from home opportunity\", \"earn thousands daily\", \"no experience needed\"\n- Are from accounts with no profile picture, very few followers, and only job postings\n- Have broken links or suspicious shortened URLs",
+  "enabled_toolsets": [
+    "terminal",
+    "file"
+  ],
+  "model": "deepseek/deepseek-v4-flash",
+  "deliver": "origin",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "11efe97ca5ae"
+}

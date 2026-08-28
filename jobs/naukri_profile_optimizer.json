@@ -1,0 +1,19 @@
+{
+  "name": "naukri_profile_optimizer",
+  "schedule": {
+    "kind": "interval",
+    "minutes": 720,
+    "display": "every 720m"
+  },
+  "schedule_display": "every 720m",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "The script output is JSON from the Naukri profile analyser. It only reads the\nprofile, it does not change it.\n\nReport to this WhatsApp group, briefly:\n1. Skills worth adding: list each with its demand count, these are keywords Vishal\n   genuinely has that recruiters search for and his profile lacks.\n2. Headline issues, if any, quoting the suggested replacement headline.\n3. Skills in high demand that are NOT his: mention only as a note, never suggest\n   adding them.\n4. If add_skills is empty and there are no headline issues, output exactly [SILENT].\n\nIf the JSON has an \"error\" of NAUKRI_NOT_LOGGED_IN, say the Naukri session expired\nand he should run naukri_login.py from a desktop session. Do not retry.\n\nWriting: no dashes as punctuation, no hashtags, plain sentences.",
+  "script": "run_naukri_profile_optimizer.sh",
+  "model": "deepseek/deepseek-v4-flash",
+  "deliver": "@naukri",
+  "id": "567677edd278"
+}

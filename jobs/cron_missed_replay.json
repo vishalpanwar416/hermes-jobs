@@ -1,0 +1,18 @@
+{
+  "name": "cron_missed_replay",
+  "schedule": {
+    "kind": "interval",
+    "minutes": 60,
+    "display": "every 60m"
+  },
+  "schedule_display": "every 60m",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": true,
+  "script": "run_missed_replay.sh",
+  "workdir": "/home/vishalpanwar/Development/Aarambh/hermes-agent",
+  "deliver": "local",
+  "id": "1550b5cc9c98"
+}

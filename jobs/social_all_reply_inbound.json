@@ -1,0 +1,25 @@
+{
+  "name": "social_all_reply_inbound",
+  "schedule": {
+    "kind": "interval",
+    "minutes": 30,
+    "display": "every 30m"
+  },
+  "schedule_display": "every 30m",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "Run the unified 30-minute social reply monitor for both LinkedIn and X:\n~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/auto_respond_social_replies.py\n\nIf any new replies or comments were generated and posted to people interacting with Vishal:\n- Output a clean summary with the platform (LinkedIn / X), the user, what they said, and the reply sent.\nIf no new mentions or comments were found requiring a response, output [SILENT].",
+  "enabled_toolsets": [
+    "terminal",
+    "file"
+  ],
+  "model": "deepseek/deepseek-v4-flash",
+  "deliver": "origin",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "3c5008bf400d"
+}

@@ -1,0 +1,19 @@
+{
+  "name": "tabletap_linkedin_post",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 11 * * *",
+    "display": "0 11 * * *"
+  },
+  "schedule_display": "0 11 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "The script output is JSON from the Table Tap LinkedIn page poster. It drafts a\npost in the Table Tap brand voice and publishes it to the company page.\n\nReport to this WhatsApp group in two lines:\n1. The content pillar and whether it published. \"action\" says what happened:\n   \"posted and verified on page\" means it is live and confirmed.\n2. The post text itself so Vishal can see what went out under the brand name.\n\nIf \"action\" is anything other than posted, say what failed and quote the reason.\nDo not re-run the script.\nIf the output has an \"error\", report it verbatim.\n\nWriting: no dashes as punctuation, no hashtags, plain sentences.",
+  "script": "run_tabletap_linkedin.sh",
+  "model": "deepseek/deepseek-v4-flash",
+  "deliver": "@brands",
+  "id": "02fbcc21e903"
+}

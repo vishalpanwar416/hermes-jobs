@@ -1,0 +1,26 @@
+{
+  "name": "jobs_board_scan",
+  "schedule": {
+    "kind": "interval",
+    "minutes": 240,
+    "display": "every 240m"
+  },
+  "schedule_display": "every 240m",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "Run search / scrape jobs for Backend Engineer / Full Stack Engineer / SDE roles on Naukri and Indeed. Use the terminal to run the search scripts.\n\nIMPORTANT: Apply fake job filtering. Skip jobs that:\n- Ask for money/upfront payment\n- Have vague company names or no company at all\n- Look like recruitment agency spam with generic descriptions\n- Ask for sensitive personal info (PAN, Aadhaar, bank details) upfront\n- Promise unrealistically high salaries for the role/location\n- Use phrases like \"work from home opportunity\", \"earn thousands daily\", \"no experience needed\"\n- Have broken links or suspicious shortened URLs\n- Have no company details, website, or verifiable information\n\nReport what jobs were found, filtered out, and why.",
+  "enabled_toolsets": [
+    "terminal",
+    "file",
+    "web"
+  ],
+  "model": "deepseek/deepseek-v4-flash",
+  "deliver": "@job_alerts",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "b9bf76edabc2"
+}

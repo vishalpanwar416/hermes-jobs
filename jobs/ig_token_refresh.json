@@ -1,0 +1,18 @@
+{
+  "name": "ig_token_refresh",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 4 * * 0",
+    "display": "0 4 * * 0"
+  },
+  "schedule_display": "0 4 * * 0",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": true,
+  "script": "run_ig_token_refresh.sh",
+  "workdir": "/home/vishalpanwar/.hermes/scripts",
+  "deliver": "local",
+  "id": "9ae47c844ff6"
+}
