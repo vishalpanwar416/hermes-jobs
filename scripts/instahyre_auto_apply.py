@@ -28,7 +28,7 @@ Instahyre exposes no job id, so the dedupe key is a slug of company + title.
 """
 import json, os, re, sqlite3, subprocess, sys, time, urllib.request
 from playwright.sync_api import sync_playwright
-from browser_lock import profile_lock
+from browser_lock import profile_lock, headless_launch_kwargs, virtual_display
 
 PROFILE_DIR = os.path.expanduser("~/.hermes/data/chrome_automation_profile")
 JOBS_DB = os.path.expanduser("~/.hermes/data/jobs_tracker.db")
@@ -273,13 +273,11 @@ def main():
     try:
         with profile_lock('instahyre', timeout=600):
             deadline = time.time() + TIME_BUDGET  # budget starts once the profile is ours
-            xvfb, disp = start_xvfb()
-            os.environ["DISPLAY"] = disp
-            os.environ.pop("WAYLAND_DISPLAY", None)
+            xvfb = virtual_display(start_xvfb)
             try:
                 with sync_playwright() as p:
                     ctx = p.chromium.launch_persistent_context(
-                        user_data_dir=PROFILE_DIR, channel="chrome", headless=False,
+                        user_data_dir=PROFILE_DIR, channel="chrome", **headless_launch_kwargs(),
                         locale="en-IN", timezone_id="Asia/Kolkata",
                         viewport={"width": 1440, "height": 900},
                         args=["--disable-blink-features=AutomationControlled",

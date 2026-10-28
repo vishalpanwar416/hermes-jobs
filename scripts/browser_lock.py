@@ -120,6 +120,55 @@ def profile_lock(owner='automation', timeout=600, poll=3.0):
             fh.close()
 
 
+# Headless vs headed.
+#
+# The job-board scripts used to run a headed Chrome inside a private Xvfb
+# display, because headless Chrome announces itself as "HeadlessChrome" in the
+# user agent and Naukri's Akamai wall rejected it (2026-08-23). Chrome's new
+# headless mode is the same browser binary, so presenting the normal user agent
+# is enough, and it skips Xvfb's software compositing on every run.
+#
+# HERMES_HEADED=1 brings back the Xvfb path for one run or for good.
+HEADED = os.environ.get('HERMES_HEADED') == '1'
+
+
+def _chrome_major():
+    import subprocess
+    try:
+        out = subprocess.run(['google-chrome', '--version'], capture_output=True,
+                             text=True, timeout=10).stdout
+        return out.split()[-1].split('.')[0]
+    except Exception:
+        return '156'
+
+
+def headless_launch_kwargs():
+    """launch_persistent_context kwargs for the current mode."""
+    if HEADED:
+        return {'headless': False}
+    return {
+        'headless': True,
+        'user_agent': ('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+                       f'(KHTML, like Gecko) Chrome/{_chrome_major()}.0.0.0 '
+                       'Safari/537.36'),
+    }
+
+
+class _NoDisplay:
+    def terminate(self):
+        pass
+
+
+def virtual_display(start_xvfb):
+    """Start Xvfb only when running headed. Returns something with terminate()."""
+    if not HEADED:
+        return _NoDisplay()
+    proc, display = start_xvfb()
+    os.environ['DISPLAY'] = display
+    os.environ.pop('WAYLAND_DISPLAY', None)
+    return proc
+
+
 if __name__ == '__main__':
     hold = int(sys.argv[1]) if len(sys.argv) > 1 else 5
     with profile_lock(f'selftest-{os.getpid()}', timeout=30):

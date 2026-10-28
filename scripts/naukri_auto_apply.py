@@ -449,7 +449,7 @@ if __name__ == '__main__':
     except Exception:
         pass
 
-from browser_lock import LOCK_PATH  # noqa: E402
+from browser_lock import LOCK_PATH, headless_launch_kwargs, virtual_display  # noqa: E402
 
 
 def acquire_browser_lock(timeout_secs=900):
@@ -502,9 +502,7 @@ def main():
         return 0
 
     lock = acquire_browser_lock()
-    xvfb, display = start_xvfb()
-    os.environ["DISPLAY"] = display
-    os.environ.pop("WAYLAND_DISPLAY", None)
+    xvfb = virtual_display(start_xvfb)
     try:
         return run_browser_pass(conn, summary, budget)
     finally:
@@ -518,7 +516,7 @@ def run_browser_pass(conn, summary, budget):
             return p.chromium.launch_persistent_context(
                 user_data_dir=PROFILE_DIR,
                 channel="chrome",
-                headless=False,
+                **headless_launch_kwargs(),
                 locale="en-IN",
                 timezone_id="Asia/Kolkata",
                 viewport={"width": 1440, "height": 900},

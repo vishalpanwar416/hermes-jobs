@@ -348,13 +348,11 @@ def run(apply_changes=False, refresh_only=False):
     out = {'mode': 'apply' if apply_changes else ('refresh' if refresh_only else 'analyse')}
 
     lock = base.acquire_browser_lock(timeout_secs=900)
-    xvfb, display = base.start_xvfb()
-    os.environ['DISPLAY'] = display
-    os.environ.pop('WAYLAND_DISPLAY', None)
+    xvfb = base.virtual_display(base.start_xvfb)
     try:
         with sync_playwright() as p:
             ctx = p.chromium.launch_persistent_context(
-                user_data_dir=base.PROFILE_DIR, channel='chrome', headless=False,
+                user_data_dir=base.PROFILE_DIR, channel='chrome', **base.headless_launch_kwargs(),
                 locale='en-IN', timezone_id='Asia/Kolkata',
                 viewport={'width': 1440, 'height': 900},
                 args=['--disable-blink-features=AutomationControlled', '--no-sandbox'])

@@ -480,7 +480,9 @@ async def post_to_x(tweets, dry_run=False):
             try: os.remove(f)
             except: pass
 
-    headless = not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY")
+    # Headless by default: the gateway's session has a DISPLAY, which used to
+    # put a Chrome window on screen every evening. HERMES_HEADED=1 to watch it.
+    headless = os.environ.get("HERMES_HEADED") != "1"
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_PATH,
