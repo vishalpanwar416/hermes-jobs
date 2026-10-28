@@ -1,11 +1,11 @@
 {
   "name": "social_bait_muter",
   "schedule": {
-    "kind": "interval",
-    "minutes": 720,
-    "display": "every 720m"
+    "kind": "cron",
+    "expr": "33 5,17 * * *",
+    "display": "33 5,17 * * *"
   },
-  "schedule_display": "every 720m",
+  "schedule_display": "33 5,17 * * *",
   "repeat": {
     "times": null
   },

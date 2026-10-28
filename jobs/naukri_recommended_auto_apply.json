@@ -1,11 +1,11 @@
 {
   "name": "naukri_recommended_auto_apply",
   "schedule": {
-    "kind": "interval",
-    "minutes": 60,
-    "display": "every 60m"
+    "kind": "cron",
+    "expr": "5 * * * *",
+    "display": "5 * * * *"
   },
-  "schedule_display": "every 60m",
+  "schedule_display": "5 * * * *",
   "repeat": {
     "times": null
   },

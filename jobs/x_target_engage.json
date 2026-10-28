@@ -1,11 +1,11 @@
 {
   "name": "x_target_engage",
   "schedule": {
-    "kind": "interval",
-    "minutes": 120,
-    "display": "every 120m"
+    "kind": "cron",
+    "expr": "40 1-23/2 * * *",
+    "display": "40 1-23/2 * * *"
   },
-  "schedule_display": "every 120m",
+  "schedule_display": "40 1-23/2 * * *",
   "repeat": {
     "times": null
   },

@@ -1,11 +1,11 @@
 {
   "name": "social_linkedin_comment_outbound",
   "schedule": {
-    "kind": "interval",
-    "minutes": 360,
-    "display": "every 360m"
+    "kind": "cron",
+    "expr": "55 1-23/6 * * *",
+    "display": "55 1-23/6 * * *"
   },
-  "schedule_display": "every 360m",
+  "schedule_display": "55 1-23/6 * * *",
   "repeat": {
     "times": null
   },

@@ -1,11 +1,11 @@
 {
   "name": "naukri_profile_optimizer",
   "schedule": {
-    "kind": "interval",
-    "minutes": 720,
-    "display": "every 720m"
+    "kind": "cron",
+    "expr": "25 3,15 * * *",
+    "display": "25 3,15 * * *"
   },
-  "schedule_display": "every 720m",
+  "schedule_display": "25 3,15 * * *",
   "repeat": {
     "times": null
   },

@@ -1,11 +1,11 @@
 {
   "name": "social_all_reply_inbound",
   "schedule": {
-    "kind": "interval",
-    "minutes": 30,
-    "display": "every 30m"
+    "kind": "cron",
+    "expr": "20,50 * * * *",
+    "display": "20,50 * * * *"
   },
-  "schedule_display": "every 30m",
+  "schedule_display": "20,50 * * * *",
   "repeat": {
     "times": null
   },

@@ -1,11 +1,11 @@
 {
   "name": "jobs_social_feed_scan",
   "schedule": {
-    "kind": "interval",
-    "minutes": 180,
-    "display": "every 180m"
+    "kind": "cron",
+    "expr": "25 1-23/3 * * *",
+    "display": "25 1-23/3 * * *"
   },
-  "schedule_display": "every 180m",
+  "schedule_display": "25 1-23/3 * * *",
   "repeat": {
     "times": null
   },

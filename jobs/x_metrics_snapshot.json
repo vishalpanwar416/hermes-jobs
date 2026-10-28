@@ -2,10 +2,10 @@
   "name": "x_metrics_snapshot",
   "schedule": {
     "kind": "cron",
-    "expr": "45 23 * * *",
-    "display": "45 23 * * *"
+    "expr": "57 23 * * *",
+    "display": "57 23 * * *"
   },
-  "schedule_display": "45 23 * * *",
+  "schedule_display": "57 23 * * *",
   "repeat": {
     "times": null
   },

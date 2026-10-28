@@ -1,11 +1,11 @@
 {
   "name": "social_x_reply_outbound",
   "schedule": {
-    "kind": "interval",
-    "minutes": 90,
-    "display": "every 90m"
+    "kind": "cron",
+    "expr": "43 */2 * * *",
+    "display": "43 */2 * * *"
   },
-  "schedule_display": "every 90m",
+  "schedule_display": "43 */2 * * *",
   "repeat": {
     "times": null
   },

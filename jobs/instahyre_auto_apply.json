@@ -2,10 +2,10 @@
   "name": "instahyre_auto_apply",
   "schedule": {
     "kind": "cron",
-    "expr": "0 10 * * *",
-    "display": "0 10 * * *"
+    "expr": "55 9 * * *",
+    "display": "55 9 * * *"
   },
-  "schedule_display": "0 10 * * *",
+  "schedule_display": "55 9 * * *",
   "repeat": {
     "times": null
   },

@@ -2,10 +2,10 @@
   "name": "wellfound_auto_apply",
   "schedule": {
     "kind": "cron",
-    "expr": "30 */4 * * *",
-    "display": "30 */4 * * *"
+    "expr": "35 */4 * * *",
+    "display": "35 */4 * * *"
   },
-  "schedule_display": "30 */4 * * *",
+  "schedule_display": "35 */4 * * *",
   "repeat": {
     "times": null
   },
