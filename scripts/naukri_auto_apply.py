@@ -16,6 +16,7 @@ Stdout is a JSON summary for the cron agent to format for WhatsApp.
 
 import json
 import os
+import random
 import re
 import sqlite3
 import subprocess
@@ -37,8 +38,10 @@ RECOMMENDED_URL = "https://www.naukri.com/mnjuser/recommendedjobs"
 # Set NAUKRI_MAX_PER_RUN / NAUKRI_MAX_PER_DAY in the environment to re-cap
 # without editing this file.
 # Per-run cap bounds runtime (each apply takes ~20-40s incl. questionnaires),
-# not ambition. Bumped to 100/run for 100+ daily target (2026-08-27).
-MAX_APPLIES_PER_RUN = int(os.environ.get("NAUKRI_MAX_PER_RUN", 100))
+# not ambition. Bumped to 100/run for 100+ daily target (2026-08-27), back
+# to 25 after 08-30: Naukri silently ignores apply clicks past ~28 in a burst,
+# and 24 hourly runs x 25 spreads the same volume out.
+MAX_APPLIES_PER_RUN = int(os.environ.get("NAUKRI_MAX_PER_RUN", 25))
 MAX_APPLIES_PER_DAY = int(os.environ.get("NAUKRI_MAX_PER_DAY", 10**6))
 
 # Targeting (user-directed 2026-08-24): BACKEND ROLES ONLY, high volume
@@ -56,6 +59,13 @@ SEARCH_QUERIES = [q.strip() for q in os.environ.get(
     "go developer,full stack developer,software engineer backend,"
     "kubernetes developer,gcp developer,redis developer"
 ).split(",") if q.strip()]
+
+# Page 1 of each query with no date filter is the same ~200 cards every run,
+# so by 2026-09-26 every run found 0 unseen jobs. jobAge restricts results to
+# recent postings and deeper pages hold most of the fresh ones (probe
+# 09-27: page 1 unfiltered 0/20 fresh; jobAge=3 pages 1-3 gave 10, 14, 18).
+SEARCH_PAGES = int(os.environ.get("NAUKRI_SEARCH_PAGES", 3))
+JOB_AGE_DAYS = int(os.environ.get("NAUKRI_JOB_AGE", 3))
 
 # Backend gate: a clearly non-backend title is rejected outright; otherwise
 # the title (or card text) must show a backend signal. Full-stack passes —
@@ -263,7 +273,18 @@ def collect_search(page, query, limit=25):
     have `url` set up front and try_apply opens them by direct navigation.
     """
     slug = re.sub(r"[^a-z0-9]+", "-", query.lower()).strip("-")
-    url = f"https://www.naukri.com/{slug}-jobs?experience=2"
+    jobs = []
+    for n in range(1, SEARCH_PAGES + 1):
+        suffix = "" if n == 1 else f"-{n}"
+        url = f"https://www.naukri.com/{slug}-jobs{suffix}?experience=2&jobAge={JOB_AGE_DAYS}"
+        found = _collect_search_page(page, url, limit)
+        if not found:
+            break
+        jobs.extend(found)
+    return jobs
+
+
+def _collect_search_page(page, url, limit):
     jobs = []
     try:
         page.goto(url, timeout=45000, wait_until="domcontentloaded")
@@ -597,9 +618,21 @@ def run_browser_pass(conn, summary, budget):
                 summary["needs_review"].append(entry)
             else:
                 summary["failed"].append(entry)
-            time.sleep(4)  # pace requests; bulk-speed applying gets accounts flagged
+            # Past a burst threshold Naukri accepts the click and applies
+            # nothing, so every job reads "confirmation not detected". Three in
+            # a row means the wall is up; stop instead of burning the batch.
+            if detail == "apply clicked but confirmation not detected":
+                unconfirmed[0] += 1
+                if unconfirmed[0] >= 3:
+                    summary["stopped"] = "3 unconfirmed applies in a row (Naukri burst limit?)"
+                    return False
+            elif status == "applied":
+                unconfirmed[0] = 0
+            # pace requests; bulk-speed applying gets accounts flagged
+            time.sleep(random.uniform(6, 12))
             return True
 
+        unconfirmed = [0]
         done_keys = set()
         for job in jobs:
             done_keys.add(job["key"])
@@ -608,7 +641,7 @@ def run_browser_pass(conn, summary, budget):
 
         # Recommended inventory alone rarely sustains 20+/hour; top the run
         # up from public search results for the profile's core stack.
-        if len(summary["applied"]) < budget:
+        if len(summary["applied"]) < budget and not summary.get("stopped"):
             summary["search_topup"] = {}
             for query in SEARCH_QUERIES:
                 if len(summary["applied"]) >= budget:
@@ -625,7 +658,7 @@ def run_browser_pass(conn, summary, budget):
                     if not process(job):
                         stop = True
                         break
-                if stop:
+                if stop or summary.get("stopped"):
                     break
 
         context.close()

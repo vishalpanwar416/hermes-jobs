@@ -13,7 +13,13 @@ scripts/         every script the jobs run, plus the run_*.sh wrappers
 ui/              read-only log viewer (FastAPI + one HTML page)
 export_jobs.py   live jobs.json -> jobs/*.json
 sync.sh          repo scripts/ -> ~/.hermes/scripts
+X_GROWTH_PLAN.md strategy for the social_x_* jobs
+x_targets.json   the account list those jobs should engage (mostly unpopulated)
 ```
+
+## Social strategy
+
+[X_GROWTH_PLAN.md](X_GROWTH_PLAN.md) is the plan the `social_x_*` jobs are meant to implement — target list, post mix, and the reply/like/follow cadence, with the specific cron changes it needs. The jobs do **not** implement it yet; it is a plan, not a description of what runs today.
 
 The brand-publishing jobs (`tabletap_*`, `sanero_*`, `ig_token_refresh`) were removed from this repo on 2026-08-28 — they drive posting for separate brand projects and depend on the `Table-Tap media` Node repo, so they belong with that project. **They still run in the live scheduler**; they are simply not tracked here, which is what `jobs/.exportignore` records. Removing them from this repo does not stop them. To actually stop one: `hermes cron delete <job-id>`.
 

@@ -21,3 +21,6 @@ output/
 .browser-profile/
 playwright-state.json
 screenshots/
+
+# Timestamped backups the scripts and hermes leave next to job files.
+*.bak-*

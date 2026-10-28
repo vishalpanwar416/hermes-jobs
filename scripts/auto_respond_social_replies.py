@@ -247,7 +247,7 @@ def _load_env_key(name):
     return None
 
 
-def _configured_model(default='google/gemini-3.7-flash'):
+def _configured_model(default='gemini-3.8-flash'):
     try:
         with open(HERMES_CONFIG) as fh:
             in_model = False
@@ -257,6 +257,14 @@ def _configured_model(default='google/gemini-3.7-flash'):
                     continue
                 if in_model:
                     if line.startswith((' ', '\t')):
+                        # Comments must be skipped before matching. The model:
+                        # block carries commented-out `# default: ...` lines
+                        # documenting past choices, and without this check the
+                        # first one wins — which is how this returned
+                        # "nvidia/nemotron-3-ultra-550b-a55b:free and restart
+                        # the gateway." and 400d every reply draft.
+                        if line.lstrip().startswith('#'):
+                            continue
                         if 'default:' in line:
                             return line.split('default:', 1)[1].strip()
                     else:
@@ -272,7 +280,7 @@ def model_reply(author, text, platform, limit):
     Returns the reply, or None to fall through to the keyword rules (missing
     key, API failure, or the model deciding there's nothing worth saying).
     """
-    api_key = _load_env_key('OPENROUTER_API_KEY')
+    api_key = _load_env_key('SCRIPT_LLM_API_KEY')
     if not api_key:
         return None
 
@@ -280,13 +288,10 @@ def model_reply(author, text, platform, limit):
 
     payload = json.dumps({
         'model': _configured_model(),
-        'provider': {'only': ['google-ai-studio']},
-        # The configured model is a reasoning model and google-ai-studio rejects
-        # disabling it ("Reasoning is mandatory for this endpoint"). At the old
-        # 300-token cap it spent 268 tokens thinking and returned a reply cut off
-        # mid-sentence, so: ask for the smallest reasoning budget allowed, drop
-        # the traces from the response, and leave real headroom for the answer.
-        'reasoning': {'effort': 'minimal', 'exclude': True},
+        # 2026-09-08: the `provider` pin and `reasoning` budget were OpenRouter
+        # fields; Gemini's OpenAI-compatible endpoint 400s on both as unknown
+        # names. Reasoning still eats into max_tokens on the flash models, so
+        # the 600-token headroom that fixed the mid-sentence truncation stays.
         'max_tokens': 600,
         'temperature': 0.7,
         'messages': [
@@ -298,7 +303,9 @@ def model_reply(author, text, platform, limit):
     }).encode('utf-8')
 
     req = urllib.request.Request(
-        'https://openrouter.ai/api/v1/chat/completions',
+        os.environ.get(
+            'SCRIPT_LLM_API_URL',
+            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'),
         data=payload,
         headers={'Authorization': f'Bearer {api_key}',
                  'Content-Type': 'application/json'},

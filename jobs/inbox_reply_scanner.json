@@ -1,0 +1,23 @@
+{
+  "name": "inbox_reply_scanner",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 10,18 * * *",
+    "display": "0 10,18 * * *"
+  },
+  "schedule_display": "0 10,18 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "The script output above has three JSON sections from the application tracker: SCAN (new replies from companies), FOLLOWUP (follow-up emails just sent) and STATS. Do not run anything yourself; only format them for WhatsApp.\n\n1. NEW REPLIES: if \"new_replies\" is non-empty, list each with company, role, from address and the reply snippet. This is the important part; Vishal needs to know when a company responds.\n2. FOLLOW-UPS: how many were sent and to whom (company and role), from the FOLLOWUP section.\n3. STATS: total applications sent, total replies received, total follow-ups sent.\n\nIf \"new_replies\" is empty AND the FOLLOWUP \"sent\" count is 0: respond with exactly [SILENT].\nIf any section contains an \"error\" key: report that error in one line instead.",
+  "script": "run_inbox_reply_scanner.sh",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
+  "deliver": "origin",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "642601050c88"
+}

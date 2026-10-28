@@ -1,17 +1,60 @@
+#!/usr/bin/env python3
+"""Reply to technical posts on X, for reach.
+
+Driven by the `social_x_reply_outbound` cron every 90 minutes.
+
+Rewritten 2026-09-16. The previous version did one thing per run: search
+`from:` over the five handles in x_targets.json inside a two hour window. Between
+09-10 and 09-15 that search came back empty on 75 consecutive runs. Zero replies,
+zero reach, six days, and nothing in the logs that looked like a failure, because
+an empty target window is a legitimate quiet run (X_GROWTH_PLAN.md section 5).
+The job was not broken. It was pointed at a five handle list through a two hour
+keyhole, and the list is a human gate that code is not allowed to widen.
+
+Three changes, in the order they matter:
+
+1. More sources for posts, none for handles. x_discover pulls from the target
+   list (window now 6h), the home timeline, and a topic search. The target list
+   is still the only thing that decides whose posts are privileged; the other two
+   only add posts to consider, and every non-target author has to clear a
+   follower floor before a reply is spent on them.
+
+2. The post is read before it is answered. x_context opens the permalink and
+   returns the untruncated body, the thread parent, the quoted tweet, image alt
+   text, the author's bio and follower count, and the replies already posted
+   underneath. Every reply this system has ever drafted was drafted from a
+   truncated feed card instead, which is both why it misfired under @wagslane's
+   joke and why the model kept declining perfectly good posts: four visible lines
+   really do contain nothing to engage with.
+
+3. Ranking on reach rather than on keywords. score_post() weighs follower count,
+   how old the post is and how many replies are already under it, because those
+   decide whether a reply is seen. A flawless reply on a twelve hour old post
+   with ninety replies is invisible.
+
+The topic source is on by default here, reversing the 2026-09-07 decision that
+turned it off. That decision was right about the old implementation, which scored
+a truncated card against a keyword list and posted at a 4% hit rate. It is worth
+being explicit that this is not the same thing being switched back on: a topic
+post now has to clear the card filter, a 1,200 follower floor on its author, a
+reply saturation check, a reach score, the model's own SKIP, and judge_relevance
+at 4/5 — six gates, four of which read the actual post. `--sources targets` is
+still one flag away if the replies it produces do not hold up.
+
+    auto_reply_growth.py                  live, up to 2 replies
+    auto_reply_growth.py --dry-run        find, read, draft, post nothing
+    auto_reply_growth.py --sources targets,feed
+    auto_reply_growth.py 3 --min-score 20
+"""
 import os
 import sys
 import time
 import json
-import sqlite3
-import re
 import random
-import urllib.request
-from playwright.sync_api import sync_playwright
+import sqlite3
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-# Capture this run's full stdout and stderr to
-# ~/.hermes/logs/pipelines/social_x_reply_outbound/ so a failed or silent run can be
-# diagnosed afterwards instead of vanishing.
+
 if __name__ == '__main__':
     # Only when run directly. Firing on import made every script that
     # imports this module log its own run under this pipeline's name.
@@ -22,38 +65,57 @@ if __name__ == '__main__':
         pass
 
 import social_voice as voice
-from browser_lock import profile_lock, BrowserBusy
+import x_context
+import x_discover
+from browser_lock import profile_lock, BrowserBusy, clear_chrome_singletons
 
 DB_PATH = os.path.expanduser('~/.hermes/data/x_growth.db')
 AUTOMATION_PROFILE_DIR = os.path.expanduser('~/.hermes/data/chrome_automation_profile')
 
-# Targeted technical search queries across high-engagement X discussion spaces
-SEARCH_QUERIES = [
-    # Go / Backend
-    '(#golang OR "golang" OR "golang developer") ("concurrency" OR "p95" OR "latency" OR "backend" OR "goroutines") -filter:links min_faves:5',
-    '("golang" OR "go") ("sync.pool" OR "pprof" OR "gin" OR "microservices") min_faves:5',
-    # AI Agents / MCP / RAG
-    '("ai agents" OR "mcp" OR "fastmcp" OR "llm in prod") ("tools" OR "evaluation" OR "guardrails" OR "rag" OR "agents") min_faves:5',
-    '("model context protocol" OR "mcp server" OR "agentic") ("architecture" OR "production" OR "eval") min_faves:5',
-    # DB Scaling / Redis / Postgres
-    '("redis" OR "postgresql" OR "postgres") ("caching" OR "scaling" OR "query optimization" OR "thundering herd") min_faves:5',
-    # Kubernetes / SRE
-    '("kubernetes" OR "k8s") ("disaster recovery" OR "keda" OR "failover" OR "sre" OR "observability") min_faves:5',
-    # Tech Showcase / Build in Public
-    '("what are you building" OR "drop your project" OR "showcase your build" OR "share your saas") ("developer" OR "code" OR "github" OR "ai") min_faves:10',
-    '("show your project" OR "drop your startup" OR "showcase your startup") ("tech" OR "developer" OR "engineer" OR "ai") min_faves:10'
-]
+# The job runs every 90 minutes so it can catch a target's post while it is
+# still fresh, which means up to 16 runs a day. Without a daily ceiling that
+# turns 2 replies a run into 30+ replies a day, which is the exact volume the
+# plan is trying to get away from. Frequency buys timing, not quantity.
+DAILY_REPLY_CAP = 12
 
-BANNED_KEYWORDS = [
-    'game', 'gaming', 'pokemon', 'cosplay', 'nintendo', 'switch', 'ps5', 'xbox', 'elden ring',
-    'anime', 'manga', 'movie', 'trailer', 'crypto giveaway', 'airdrop', 'casino', 'betting',
-    'hiring alert', 'trainee software', 'job opening', 'recruitment', 'fresher', 'onlyfans'
-]
+# Never reply twice to the same account inside this window. Section 5: three
+# replies to one handle in two days reads as stalking.
+AUTHOR_COOLDOWN_HOURS = 48
+
+# Two floors on x_discover.score_post(), because the two kinds of candidate are
+# not competing for the same thing. A target-list post is worth answering for the
+# relationship even when its reach is poor, so it only has to clear a low bar. A
+# stranger's post is worth answering only for reach, so it has to be good.
+#
+# 26 rather than the 30 this started at, set from the first live shortlist
+# (2026-09-16) rather than from invented examples. At 30 the run's single best
+# candidate was thrown away before it was ever drafted: a MinIO explainer from a
+# 44,800 follower account, ten hours old with four replies under it, which scored
+# 28.2 because the score docks a post for modest like counts and for being past
+# the eight hour mark. Drafted by hand afterwards it produced a reply about
+# erasure coding costs that judge_relevance scored 5/5. A floor that rejects that
+# post is measuring the wrong thing.
+#
+# Being a little permissive here is the right bias now that the score is only
+# deciding where to spend page loads and replies. The two gates that decide
+# whether anything is actually posted are downstream and much sharper: the
+# model's own SKIP, and judge_relevance at 4/5.
+MIN_SCORE_TARGET = 12.0
+MIN_SCORE_STRANGER = 26.0
+
+# Opening a permalink costs a page load and the author profile costs another, so
+# the shortlist is walked in rank order and abandoned once enough replies are
+# posted or this many posts have been read.
+MAX_CONTEXT_FETCHES = 6
+
+
+# ---------------------------------------------------------------------------
+# state
+# ---------------------------------------------------------------------------
 
 def init_replies_table():
     conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute('''
+    conn.execute('''
     CREATE TABLE IF NOT EXISTS auto_replies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tweet_id TEXT UNIQUE NOT NULL,
@@ -66,318 +128,314 @@ def init_replies_table():
     ''')
     conn.commit()
     conn.close()
+    x_context.init_tables()
+
 
 def is_tweet_replied(tweet_id):
     conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM auto_replies WHERE tweet_id = ?", (tweet_id,))
-    row = cur.fetchone()
+    row = conn.execute("SELECT 1 FROM auto_replies WHERE tweet_id = ?",
+                       (tweet_id,)).fetchone()
     conn.close()
     return row is not None
 
-def has_used_recent_reply(reply_text, limit=6):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT reply_text FROM auto_replies ORDER BY id DESC LIMIT ?", (limit,))
-    rows = cur.fetchall()
-    conn.close()
-    return any(row[0] == reply_text for row in rows)
 
-def is_author_recently_replied(author, limit=10):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT author FROM auto_replies ORDER BY id DESC LIMIT ?", (limit,))
-    rows = cur.fetchall()
-    conn.close()
-    return any(row[0].lower() == author.lower() for row in rows)
+def is_url_replied(url):
+    import re
+    m = re.search(r'/status/(\d+)', url or '')
+    return bool(m) and is_tweet_replied(m.group(1))
 
-def record_reply(tweet_id, author, tweet_text, reply_text):
+
+def has_used_recent_reply(reply_text, limit=10):
     conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute('''
-    INSERT OR IGNORE INTO auto_replies (tweet_id, author, tweet_text, reply_text)
-    VALUES (?, ?, ?, ?)
-    ''', (tweet_id, author, tweet_text, reply_text))
+    rows = conn.execute("SELECT reply_text FROM auto_replies ORDER BY id DESC LIMIT ?",
+                        (limit,)).fetchall()
+    conn.close()
+    return any(r[0] == reply_text for r in rows)
+
+
+def is_author_recently_replied(author, hours=AUTHOR_COOLDOWN_HOURS):
+    """Have we already replied to this account inside the cooldown window?
+
+    This used to look at the last N rows instead of a time window. At low volume
+    those coincide; the moment throughput rises, the window slides past the
+    duplicate before it can be caught, which is how kmeanskaran and
+    TanzilaSha9574 each collected three replies inside two days. A fixed row
+    count is a time window pretending to be one.
+    """
+    if not author:
+        return False
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute("SELECT 1 FROM auto_replies WHERE lower(author) = lower(?) "
+                       "AND created_at >= datetime('now', ?) LIMIT 1",
+                       (author, f'-{int(hours)} hours')).fetchone()
+    conn.close()
+    return row is not None
+
+
+def record_reply(tweet_id, author, tweet_text, reply_text, status='posted'):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('INSERT OR IGNORE INTO auto_replies '
+                 '(tweet_id, author, tweet_text, reply_text, status) VALUES (?,?,?,?,?)',
+                 (tweet_id, author, (tweet_text or '')[:500], reply_text, status))
     conn.commit()
     conn.close()
 
-REPLY_POOLS = {
-    "showcase": [
-        "Building Table-Tap (live QR ordering + GPT-4 RAG on GCP Cloud Run) and recently open-sourced `multi-qr` (npm i multi-qr) to pack WiFi + URLs into single QR payloads. Full work: https://vishalpanwar.in",
-        "Shipped `multi-qr` recently on npm — a lightweight codec to pack WiFi, URLs, and contacts into a single scannable QR without exceeding byte limits: https://github.com/vishalpanwar416/multi-qr",
-        "Working on Table-Tap (live contactless ordering + RAG analytics on Cloud Run) and agent backends with MCP tool-calling. My work: https://vishalpanwar.in"
-    ],
-    "golang": [
-        "A big win for us in Go at 1K+ RPS was using sync.Pool to reuse memory buffers in hot JSON paths. Slashed GC pauses and cut p95 latency by ~40%.",
-        "Streaming JSON encoders and bounded worker pools make a massive difference in Go APIs under traffic spikes compared to spawning unbounded goroutines.",
-        "Profiling Go with pprof under load showed us that memory allocation churn in middleware was eating 30% of CPU time before we switched to buffer pooling."
-    ],
-    "ai_agents": [
-        "The biggest barrier to reliable agents in prod is nondeterministic tool-calling. Adding strict schema validation and evaluation guardrails before any outbound mutation is essential.",
-        "Most LLM wrappers break when chained across tools. Using MCP for structured tool discovery and adding automated eval loops makes multi-step execution deterministic.",
-        "We found that chunking by semantic boundaries combined with BM25 hybrid re-ranking pushed RAG query accuracy from 70% to 90%+ in production."
-    ],
-    "databases": [
-        "Pairing Redis with stale-while-revalidate and distributed locks on cache misses saved our Postgres DB from thundering herds during traffic spikes. Dropped peak load 60%.",
-        "Tiered TTLs based on entity volatility and caching query aggregates cut repeat DB load by over 50% on our high-traffic endpoints.",
-        "Circuit breakers on external data vendors combined with Bull/Redis queues prevent flaky third-party APIs from cascading into database connection pool exhaustion."
-    ],
-    "infra_devops": [
-        "Running live disaster recovery restore drills in K8s/GCP always surfaces unexpected service dependency order bugs. Automated failover runbooks are non-negotiable.",
-        "Automating our CI/CD pipelines via Jenkins and Terraform dropped deployment overhead by 85% while keeping production uptime at 99.9%."
-    ]
-}
 
-# Pure follow farming. Showcase threads ("drop your project") are deliberately
-# NOT here: replying to a fresh one with what he actually built is a reasonable
-# way to get seen. These are the ones with no technical surface at all.
-_ENGAGEMENT_FARM = [
-    'follow me and i', 'follow for follow', 'f4f', 'like and retweet',
-    'retweet to enter', 'tag 3 friends', 'comment "yes"', "comment 'yes'",
-    'drop a gm', 'gm fam', 'who wants free', 'giveaway', 'airdrop',
-]
+def replies_sent_today():
+    """Rolling 24 hours, not a calendar day.
 
-# Specific enough that the tweet is genuinely about engineering.
-_STRONG_TECH = [
-    'developer', 'engineer', 'backend', 'frontend', 'coding', 'software', 'api',
-    'code', 'github', 'saas', 'golang', 'python', 'kubernetes', 'k8s', 'docker',
-    'redis', 'postgres', 'database', 'mcp', 'rag', 'llm', 'architecture',
-    'latency', 'throughput', 'cache', 'caching', 'goroutine', 'concurrency',
-    'deploy', 'scaling', 'microservice', 'microservices', 'devops', 'terraform',
-    'p95', 'p99', 'pprof', 'grpc', 'kafka', 'typescript', 'javascript', 'rust',
-    'node', 'nextjs', 'fastapi', 'embedding', 'retrieval', 'inference',
-]
-
-# Too generic to qualify a tweet on their own. "Building" and "project" were in
-# the accept list before, which is why networking threads kept getting through.
-_WEAK_TECH = ['building', 'build in public', 'project', 'startup', 'agent', 'ai', 'go']
-
-
-def _mentions(text, terms):
-    """Word boundary match.
-
-    Substring matching meant 'go' fired on "going" and "good", so almost any
-    tweet counted as Go content.
+    created_at is stored in UTC by CURRENT_TIMESTAMP, so comparing it to a local
+    calendar date makes the cap forget everything sent between midnight and
+    05:30 IST — which would hand the job a fresh budget of 12 in the middle of
+    the night. A rolling window has no boundary to fall through and is the
+    better rate limit anyway.
     """
-    return any(re.search(rf'(?<![a-z0-9]){re.escape(term)}s?(?![a-z0-9])', text)
-               for term in terms)
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        return conn.execute("SELECT COUNT(*) FROM auto_replies WHERE status='posted' "
+                            "AND created_at >= datetime('now', '-24 hours')").fetchone()[0]
+    except sqlite3.Error:
+        return 0
+    finally:
+        conn.close()
 
 
-def is_valid_tech_context(text):
-    t = text.lower()
-    if any(b in t for b in BANNED_KEYWORDS):
-        return False
-    if any(b in t for b in _ENGAGEMENT_FARM):
-        return False
+# ---------------------------------------------------------------------------
+# drafting
+# ---------------------------------------------------------------------------
 
-    if _mentions(t, _STRONG_TECH):
-        return True
+def draft_for(ctx):
+    """Draft a reply to a fetched context, or return None to post nothing.
 
-    # A weak term alone is not enough, but a weak term plus a showcase prompt is
-    # a build-in-public thread worth answering.
-    showcase = any(k in t for k in [
-        'drop your', 'show me what you', 'share your project', 'what are you building',
-        'what did you ship', 'showcase', 'what have you built',
-    ])
-    return showcase and _mentions(t, _WEAK_TECH)
-
-def generate_technical_reply(tweet_text, author='someone'):
-    """Draft a reply to a stranger's tweet.
-
-    The REPLY_POOLS below stay as a fallback, but they used to be the whole
-    strategy: the same handful of sentences went out over and over, which reads
-    as a bot to anyone who saw two of them. The model writes to the actual tweet
-    now, and social_voice strips the machine tells afterwards.
+    Three gates, in increasing cost: the model's own SKIP, a repeat check against
+    what was recently sent, and judge_relevance() on the pair. The judge is not
+    optional and an unscorable pair is dropped — an unverified reply to a
+    hand-picked target is the one outcome worse than silence (section 5).
     """
-    if not is_valid_tech_context(tweet_text):
+    body = (ctx.get('text') or '').strip()
+    if not body:
         return None
 
-    drafted = voice.draft_comment(author, tweet_text, platform='x')
+    block = x_context.render_for_model(ctx)
+    drafted = voice.draft_comment_ctx(block, body, platform='x')
+
     if drafted is voice.SKIP:
-        print(f"[voice] declined to reply to @{author}", file=sys.stderr)
+        print(f"[voice] declined @{ctx.get('author')}", file=sys.stderr)
         return None
-    if drafted and not has_used_recent_reply(drafted):
-        return drafted
+    if not drafted:
+        print(f"[voice] no draft for @{ctx.get('author')} (model call failed) — "
+              f"posting nothing", file=sys.stderr)
+        return None
+    if has_used_recent_reply(drafted):
+        print(f"[voice] draft for @{ctx.get('author')} repeats a recent reply — dropped",
+              file=sys.stderr)
+        return None
 
-    t = tweet_text.lower()
+    # The judge scores against the full post, which is the version the reply was
+    # actually written for. Scoring it against the old truncated card would have
+    # penalised a reply for answering a sentence the card cut off.
+    score = voice.judge_relevance(body, drafted)
+    if score is None:
+        print(f"[judge] could not score reply to @{ctx.get('author')} — posting nothing",
+              file=sys.stderr)
+        return None
+    if score < voice.RELEVANCE_MIN:
+        print(f"[judge] {score}/5 for @{ctx.get('author')}, below {voice.RELEVANCE_MIN} "
+              f"— dropped:\n        post:  {body[:110]!r}\n        draft: {drafted[:110]!r}",
+              file=sys.stderr)
+        return None
 
-    # 1. Project showcase / Build in public (tech only)
-    if any(k in t for k in ['drop your', 'show me what you', 'share your project', 'what are you building', 'built this week', 'what did you ship', 'showcase', 'drop your startup', 'show your project']):
-        for opt in random.sample(REPLY_POOLS["showcase"], len(REPLY_POOLS["showcase"])):
-            if not has_used_recent_reply(opt):
-                return opt
-                
-    # 2. Go / Concurrency / Performance
-    if any(k in t for k in ['golang', 'go lang', 'goroutine', 'sync.pool', 'gin', 'go api', 'p95', 'gc pause']):
-        for opt in random.sample(REPLY_POOLS["golang"], len(REPLY_POOLS["golang"])):
-            if not has_used_recent_reply(opt):
-                return opt
-                
-    # 3. AI / MCP / Agents / RAG
-    if any(k in t for k in ['mcp', 'agentic', 'ai agent', 'tool calling', 'fastmcp', 'langchain', 'rag', 'llm in prod', 'evals', 'model context protocol']):
-        for opt in random.sample(REPLY_POOLS["ai_agents"], len(REPLY_POOLS["ai_agents"])):
-            if not has_used_recent_reply(opt):
-                return opt
-                
-    # 4. Redis / Postgres / Database scaling
-    if any(k in t for k in ['redis', 'caching', 'postgres', 'database load', 'slow query', 'thundering herd', 'query optimization']):
-        for opt in random.sample(REPLY_POOLS["databases"], len(REPLY_POOLS["databases"])):
-            if not has_used_recent_reply(opt):
-                return opt
-                
-    # 5. K8s / SRE / Disaster Recovery
-    if any(k in t for k in ['kubernetes', 'k8s', 'failover', 'disaster recovery', 'keda', 'terraform', 'outage', 'sre']):
-        for opt in random.sample(REPLY_POOLS["infra_devops"], len(REPLY_POOLS["infra_devops"])):
-            if not has_used_recent_reply(opt):
-                return opt
+    print(f"[judge] {score}/5 for @{ctx.get('author')}", file=sys.stderr)
+    return drafted
 
-    return None
 
-def scan_and_reply(max_replies=5, dry_run=False):
+def post_reply(page, url, text):
+    """Post one reply on the permalink page. True when it went out."""
+    try:
+        page.goto(url, timeout=40000, wait_until='domcontentloaded')
+        page.wait_for_timeout(3000)
+
+        btn = page.locator('[data-testid="reply"]').first
+        if not btn.count() or not btn.is_visible():
+            print(f'[reply] no reply button on {url}', file=sys.stderr)
+            return False
+        btn.click()
+        page.wait_for_timeout(2000)
+
+        editor = page.locator('div[data-testid="tweetTextarea_0"]').first
+        if not editor.count() or not editor.is_visible():
+            print(f'[reply] no composer opened on {url}', file=sys.stderr)
+            return False
+        editor.click()
+        page.wait_for_timeout(400)
+        page.keyboard.type(text, delay=10)
+        page.wait_for_timeout(1500)
+
+        send = page.locator('[data-testid="tweetButton"]').first
+        if not send.count() or not send.is_enabled():
+            print(f'[reply] send button not enabled on {url}', file=sys.stderr)
+            return False
+        send.click()
+        page.wait_for_timeout(6000)
+        return True
+    except Exception as e:
+        print(f'[reply] failed on {url}: {e}', file=sys.stderr)
+        return False
+
+
+# ---------------------------------------------------------------------------
+# the run
+# ---------------------------------------------------------------------------
+
+def scan_and_reply(max_replies=2, dry_run=False, sources=('targets', 'feed', 'topic'),
+                   min_score=MIN_SCORE_STRANGER):
     init_replies_table()
-    replies_done = []
-    
-    # Auto-clean lingering locks before launching
-    for lock_name in ['SingletonLock', 'SingletonSocket', 'SingletonCookie']:
-        p = os.path.join(AUTOMATION_PROFILE_DIR, lock_name)
-        if os.path.exists(p):
-            try:
-                os.remove(p)
-            except Exception:
-                pass
-                
-    with sync_playwright() as p:
+    done = []
+
+    sent = replies_sent_today()
+    if sent >= DAILY_REPLY_CAP:
+        print(f'[cap] {sent}/{DAILY_REPLY_CAP} replies in the last 24h — stopping',
+              file=sys.stderr)
+        print('[SILENT] daily reply cap reached')
+        return []
+    max_replies = min(max_replies, DAILY_REPLY_CAP - sent)
+
+    # Safe here and only here: the caller holds the profile lock, so there is no
+    # live Chrome whose singletons these could be. Doing it before acquiring the
+    # lock is what let one job delete another job's lock mid-run.
+    clear_chrome_singletons()
+
+    from playwright.sync_api import sync_playwright
+
+    considered = 0
+    rejected = []
+    with sync_playwright() as pw:
+        ctx_browser = None
         try:
-            context = p.chromium.launch_persistent_context(
-                user_data_dir=AUTOMATION_PROFILE_DIR,
-                channel="chrome",
-                headless=True,
-                args=[
-                    '--disable-blink-features=AutomationControlled',
-                    '--no-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-gpu'
-                ]
-            )
-            page = context.new_page()
-            page.set_viewport_size({"width": 1440, "height": 900})
-            
-            # Run across 2-3 targeted search queries to get maximum high-reach posts
-            sampled_queries = random.sample(SEARCH_QUERIES, min(3, len(SEARCH_QUERIES)))
-            
-            for query in sampled_queries:
-                if len(replies_done) >= max_replies:
+            ctx_browser = pw.chromium.launch_persistent_context(
+                user_data_dir=AUTOMATION_PROFILE_DIR, channel='chrome', headless=True,
+                args=['--disable-blink-features=AutomationControlled', '--no-sandbox',
+                      '--disable-dev-shm-usage', '--disable-gpu'])
+            page = ctx_browser.new_page()
+            page.set_viewport_size({'width': 1440, 'height': 1000})
+
+            shortlist = x_discover.discover(
+                page, sources=sources, shortlist=8,
+                skip_url=is_url_replied, skip_author=is_author_recently_replied)
+
+            if not shortlist:
+                print('[reply] nothing passed the card filter this run', file=sys.stderr)
+                print('[SILENT] no candidate posts found')
+                return []
+
+            for cand in shortlist:
+                if len(done) >= max_replies or considered >= MAX_CONTEXT_FETCHES:
                     break
-                    
-                # f=top with no time bound was surfacing tweets two months old.
-                # A reply on a stale thread gets no impressions no matter how
-                # good it is, so bound the search to the last few days and let
-                # f=top rank within that window.
-                dated_query = query if 'within_time:' in query else f"{query} within_time:3d"
-                encoded_query = urllib.request.quote(dated_query)
-                search_url = f"https://x.com/search?q={encoded_query}&f=top"
-                
-                print(f"Scanning high-reach query: {query}", file=sys.stderr)
-                try:
-                    page.goto(search_url, timeout=35000, wait_until="domcontentloaded")
-                    time.sleep(4)
-                except Exception:
+                considered += 1
+
+                ctx = x_context.fetch_context(page, cand['url'])
+                if not ctx:
+                    rejected.append((cand['author'], 'context unreadable'))
                     continue
-                
-                for scroll in range(4):
-                    if len(replies_done) >= max_replies:
-                        break
-                        
-                    articles = page.locator('article[data-testid="tweet"]').all()
-                    for art in articles:
-                        if len(replies_done) >= max_replies:
-                            break
-                        try:
-                            text = art.inner_text()
-                            
-                            links = art.locator('a').all()
-                            tweet_url = ""
-                            author = ""
-                            for l in links:
-                                href = l.get_attribute('href') or ''
-                                if '/status/' in href and not tweet_url:
-                                    tweet_url = href
-                                if href.startswith('/') and not href.startswith('/home') and not '/status/' in href and not author:
-                                    author = href.strip('/')
-                                    
-                            tweet_id = tweet_url.split('/status/')[-1].split('?')[0] if '/status/' in tweet_url else ""
-                            
-                            if not tweet_id or is_tweet_replied(tweet_id) or is_author_recently_replied(author) or author.lower() in ['vishalpanwarr', 'mynintendonews', 'jessayleee']:
-                                continue
-                                
-                            reply_content = generate_technical_reply(text, author)
-                            if reply_content:
-                                print(f"\nFound high-reach discussion by @{author}:\n{text[:120]}...", file=sys.stderr)
-                                print(f"Replying: {reply_content}", file=sys.stderr)
 
-                                if dry_run:
-                                    print(f"[dry-run] would reply to @{author}", file=sys.stderr)
-                                    replies_done.append({
-                                        "author": author,
-                                        "tweet": text[:120],
-                                        "reply": reply_content,
-                                        "status": "dry-run",
-                                    })
-                                    continue
+                score, reason = x_discover.score_post(
+                    ctx, is_target=cand.get('is_target', False),
+                    card_score=cand.get('card_score', 0))
+                tag = 'TARGET' if cand.get('is_target') else cand['source']
+                if score is None:
+                    print(f'  [skip] @{ctx.get("author")} ({tag}): {reason}', file=sys.stderr)
+                    rejected.append((ctx.get('author'), reason))
+                    continue
+                floor = MIN_SCORE_TARGET if cand.get('is_target') else min_score
+                print(f'  [{score}/{floor}] @{ctx.get("author")} ({tag}): {reason}',
+                      file=sys.stderr)
+                if score < floor:
+                    rejected.append((ctx.get('author'), f'score {score} below {floor}'))
+                    continue
 
-                                reply_btn = art.locator('[data-testid="reply"]').first
-                                if reply_btn.is_visible():
-                                    reply_btn.click()
-                                    time.sleep(2)
-                                    
-                                    editor = page.locator('div[data-testid="tweetTextarea_0"]').first
-                                    if editor.is_visible():
-                                        editor.click()
-                                        time.sleep(0.3)
-                                        page.keyboard.type(reply_content, delay=10)
-                                        time.sleep(1.5)
-                                        
-                                        post_reply_btn = page.locator('[data-testid="tweetButton"]').first
-                                        if post_reply_btn.is_enabled():
-                                            post_reply_btn.click()
-                                            time.sleep(6)
-                                            record_reply(tweet_id, author, text[:200], reply_content)
-                                            replies_done.append({
-                                                "author": author,
-                                                "tweet": text[:120],
-                                                "reply": reply_content
-                                            })
-                                            print(f"Reply #{len(replies_done)} posted successfully!", file=sys.stderr)
-                        except Exception:
-                            continue
-                            
-                    try:
-                        page.mouse.wheel(0, 1500)
-                        time.sleep(2.5)
-                    except Exception:
-                        pass
-                
-            context.close()
+                # The author can differ from the card's guess once the post is
+                # open (a repost, or a link scraped off the wrong anchor), so the
+                # cooldown is re-checked against the real handle.
+                if is_author_recently_replied(ctx.get('author')):
+                    rejected.append((ctx.get('author'), 'replied within cooldown'))
+                    continue
+
+                reply = draft_for(ctx)
+                if not reply:
+                    rejected.append((ctx.get('author'), 'no usable draft'))
+                    continue
+
+                print(f'\n@{ctx.get("author")} ({tag}, score {score})\n'
+                      f'  post:  {(ctx.get("text") or "")[:160]}\n'
+                      f'  reply: {reply}', file=sys.stderr)
+
+                if dry_run:
+                    done.append({'author': ctx.get('author'), 'url': ctx['url'],
+                                 'source': cand['source'], 'score': score,
+                                 'post': (ctx.get('text') or '')[:200],
+                                 'reply': reply, 'status': 'dry-run'})
+                    continue
+
+                if post_reply(page, ctx['url'], reply):
+                    record_reply(ctx['tweet_id'], ctx.get('author'),
+                                 ctx.get('text'), reply)
+                    done.append({'author': ctx.get('author'), 'url': ctx['url'],
+                                 'source': cand['source'], 'score': score,
+                                 'post': (ctx.get('text') or '')[:200],
+                                 'reply': reply, 'status': 'posted'})
+                    print(f'[reply] posted #{len(done)} to @{ctx.get("author")}',
+                          file=sys.stderr)
+                    time.sleep(random.uniform(4, 9))
+                else:
+                    record_reply(ctx['tweet_id'], ctx.get('author'), ctx.get('text'),
+                                 reply, status='failed')
+                    rejected.append((ctx.get('author'), 'post failed'))
+
         except Exception as e:
-            print(f"Error in scan_and_reply: {e}", file=sys.stderr)
-            
-    return replies_done
+            print(f'[reply] run error: {e}', file=sys.stderr)
+        finally:
+            if ctx_browser is not None:
+                try:
+                    ctx_browser.close()
+                except Exception:
+                    pass
+
+    if not done:
+        # Why nothing happened, when nothing happens. A bare [SILENT] is what
+        # made six days of empty runs look like six days of a quiet timeline.
+        detail = '; '.join(f'@{a}: {r}' for a, r in rejected[:4]) or 'no candidates'
+        print(f'[SILENT] {considered} posts read, none replied to ({detail})')
+    else:
+        print(f'[reply] {len(done)} replies this run '
+              f'({sent + len(done)}/{DAILY_REPLY_CAP} in 24h)')
+    return done
+
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='Reply to high-reach technical tweets.')
+    ap = argparse.ArgumentParser(description='Reply to high-reach technical posts on X.')
     # Positional count kept so the existing cron invocation still works.
-    parser.add_argument('max_replies', nargs='?', type=int, default=3,
-                        help='maximum replies to post in one run (default 3)')
-    parser.add_argument('--dry-run', action='store_true',
-                        help='scan and draft, but post nothing')
-    args = parser.parse_args()
+    # 2 per run against a 12/day cap spreads the budget across the whole day
+    # instead of spending it in the first four runs before anyone is awake.
+    ap.add_argument('max_replies', nargs='?', type=int, default=2,
+                    help='maximum replies to post in one run (default 2)')
+    ap.add_argument('--dry-run', action='store_true',
+                    help='discover, read, draft and judge, but post nothing')
+    ap.add_argument('--sources', default='targets,feed,topic',
+                    help='comma separated: targets, feed, topic (default all three)')
+    ap.add_argument('--min-score', type=float, default=MIN_SCORE_STRANGER,
+                    help=f'reach score floor for a non-target post '
+                         f'(default {MIN_SCORE_STRANGER}; target-list posts always '
+                         f'use {MIN_SCORE_TARGET})')
+    args = ap.parse_args()
 
-    max_count = args.max_replies
+    srcs = tuple(s.strip() for s in args.sources.split(',') if s.strip())
     try:
         with profile_lock('social_x_reply_outbound'):
-            done = scan_and_reply(max_replies=max_count, dry_run=args.dry_run)
+            out = scan_and_reply(max_replies=args.max_replies, dry_run=args.dry_run,
+                                 sources=srcs, min_score=args.min_score)
     except BrowserBusy as e:
-        print(f"Skipping run: {e}", file=sys.stderr)
-        done = []
-    print(json.dumps(done, indent=2))
+        print(f'Skipping run: {e}', file=sys.stderr)
+        print('[SILENT] browser busy')
+        out = []
+    print(json.dumps(out, indent=2))

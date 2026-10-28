@@ -1,0 +1,19 @@
+{
+  "name": "x_target_engage",
+  "schedule": {
+    "kind": "interval",
+    "minutes": 120,
+    "display": "every 120m"
+  },
+  "schedule_display": "every 120m",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": true,
+  "script": "x_target_engage.py",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
+  "deliver": "local",
+  "id": "c0582690a192"
+}

@@ -10,14 +10,16 @@
     "times": null
   },
   "enabled": true,
-  "no_agent": false,
+  "no_agent": true,
   "prompt": "Run the script ~/.hermes/scripts/generate_daily_update.py via python3 in terminal to gather Stacky tasks, git commits, and jobs tracker data, and print the resulting briefing text directly.",
+  "script": "generate_daily_update.py",
   "enabled_toolsets": [
     "terminal",
     "file",
     "web"
   ],
-  "model": "deepseek/deepseek-v4-flash",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
   "deliver": "@work_report",
   "origin": {
     "platform": "whatsapp"

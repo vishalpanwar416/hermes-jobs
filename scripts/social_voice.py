@@ -25,13 +25,18 @@ import urllib.error
 HERMES_ENV = os.path.expanduser('~/.hermes/.env')
 HERMES_CONFIG = os.path.expanduser('~/.hermes/config.yaml')
 
-API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+# 2026-09-08: was OpenRouter, whose account died (401 "User not found."). Now
+# Gemini's OpenAI-compatible endpoint, which takes this same chat/completions
+# payload shape unchanged — only the URL, key and model name differ.
+API_URL = os.environ.get(
+    'SCRIPT_LLM_API_URL',
+    'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions')
 
 # Drafting a two line social reply does not need the gateway's main model.
 # Pinned rather than read from config so a future config change cannot silently
 # put this hot path (it runs on every reply, comment and post) onto an expensive
-# reasoning model again.
-VOICE_MODEL = 'google/gemini-2.5-flash-lite'
+# reasoning model again. Native AI Studio model id, not the OpenRouter slug.
+VOICE_MODEL = os.environ.get('SOCIAL_VOICE_MODEL', 'gemini-3.5-flash-lite')
 
 
 class _Skip:
@@ -96,7 +101,7 @@ Do this instead:
 # config
 # ---------------------------------------------------------------------------
 
-def load_env_key(name='OPENROUTER_API_KEY'):
+def load_env_key(name='SCRIPT_LLM_API_KEY'):
     val = os.environ.get(name)
     if val:
         return val.strip()
@@ -111,7 +116,7 @@ def load_env_key(name='OPENROUTER_API_KEY'):
     return None
 
 
-def configured_model(default='google/gemini-3.7-flash'):
+def configured_model(default='gemini-3.8-flash'):
     try:
         with open(HERMES_CONFIG) as fh:
             in_model = False
@@ -121,6 +126,10 @@ def configured_model(default='google/gemini-3.7-flash'):
                     continue
                 if in_model:
                     if line.startswith((' ', '\t')):
+                        # Skip commented-out `# default: ...` lines in the
+                        # model: block, or the first one wins over the real key.
+                        if line.lstrip().startswith('#'):
+                            continue
                         if 'default:' in line:
                             return line.split('default:', 1)[1].strip()
                     else:
@@ -264,11 +273,13 @@ def has_ai_tells(text):
 # drafting
 # ---------------------------------------------------------------------------
 
-def draft(task, context, limit=240, temperature=0.85, allow_skip=True):
-    """Ask the model for text in Vishal's voice.
+def _chat(messages, max_tokens=700, temperature=0.85, label='draft', allow_partial=False):
+    """One chat/completions call. Returns the text, or None on any failure.
 
-    Returns the humanized string, SKIP when the model declines, or None when the
-    call failed so the caller can fall back to whatever it did before.
+    Shared by draft() and judge_relevance() so the two calls that decide whether
+    something gets posted go through exactly one transport. A draft cut off by
+    the token cap is discarded; the judge sets allow_partial because it only
+    needs one digit out of whatever came back.
     """
     api_key = load_env_key()
     if not api_key:
@@ -276,55 +287,51 @@ def draft(task, context, limit=240, temperature=0.85, allow_skip=True):
 
     import urllib.request
 
+    payload = json.dumps({
+        'model': VOICE_MODEL,
+        'max_tokens': max_tokens,
+        'temperature': temperature,
+        'messages': messages,
+    }).encode('utf-8')
+
+    # The reasoning on/off dance that used to live here was OpenRouter-specific.
+    # Gemini's OpenAI-compatible endpoint rejects both `reasoning` and
+    # `reasoning_effort: none` with 400 INVALID_ARGUMENT, and flash-lite spends
+    # no thought tokens by default anyway, so the toggle is simply gone.
+    try:
+        req = urllib.request.Request(
+            API_URL, data=payload,
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            body = json.loads(resp.read().decode('utf-8'))
+        choice = body['choices'][0]
+        if choice.get('finish_reason') == 'length' and not allow_partial:
+            print(f'[voice] {label} hit token cap, discarding partial text', file=sys.stderr)
+            return None
+        return (choice['message'].get('content') or '').strip()
+    except Exception as e:
+        print(f'[voice] {label} failed: {e}', file=sys.stderr)
+        return None
+
+
+def draft(task, context, limit=240, temperature=0.85, allow_skip=True):
+    """Ask the model for text in Vishal's voice.
+
+    Returns the humanized string, SKIP when the model declines, or None when the
+    call failed so the caller can fall back to whatever it did before.
+    """
     skip_rule = ("\nIf there is nothing worth saying, or the input is spam, an ad, "
                  "engagement bait, or hostile, reply with exactly: SKIP") if allow_skip else ""
 
     system = f"{BACKGROUND}\n\n{VOICE}\n\nHard limit {limit} characters.{skip_rule}"
 
-    messages = [
+    raw = _chat([
         {'role': 'system', 'content': system},
         {'role': 'user', 'content': f"{task}\n\n{context}"},
-    ]
+    ], max_tokens=700, temperature=temperature)
 
-    def build(reasoning):
-        return json.dumps({
-            'model': VOICE_MODEL,
-            'provider': {'only': ['google-ai-studio']},
-            'reasoning': reasoning,
-            'max_tokens': 700,
-            'temperature': temperature,
-            'messages': messages,
-        }).encode('utf-8')
-
-    def call(payload):
-        req = urllib.request.Request(
-            API_URL, data=payload,
-            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'})
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            return json.loads(resp.read().decode('utf-8'))
-
-    # Reasoning off entirely: for a short social reply it adds nothing and its
-    # tokens bill at the output rate. Some Google endpoints refuse to disable it
-    # (3.7-flash returns 400 "Reasoning is mandatory"), so fall back to the
-    # smallest budget allowed rather than failing the draft.
-    try:
-        try:
-            body = call(build({'enabled': False}))
-        except urllib.error.HTTPError as e:
-            if e.code != 400:
-                raise
-            print('[voice] endpoint requires reasoning, retrying minimal', file=sys.stderr)
-            body = call(build({'effort': 'minimal', 'exclude': True}))
-
-        choice = body['choices'][0]
-        if choice.get('finish_reason') == 'length':
-            print('[voice] hit token cap, discarding partial text', file=sys.stderr)
-            return None
-        raw = (choice['message'].get('content') or '').strip()
-    except Exception as e:
-        print(f'[voice] draft failed: {e}', file=sys.stderr)
+    if raw is None:
         return None
-
     if not raw:
         return None
     if raw.upper().startswith('SKIP'):
@@ -403,17 +410,163 @@ def draft_reply(author, their_text, platform):
 
 
 def draft_comment(author, post_text, platform='linkedin'):
-    """A comment on a stranger's post, for reach."""
+    """A comment on a stranger's post, for reach.
+
+    The old task line was "add a specific technical observation from his own
+    experience", and the model obeyed it too well: given a joke about online
+    learning it produced a paragraph about unbounded goroutines, because that is
+    what the background made available. So the instruction now leads with the
+    post, and the SKIP conditions are spelled out instead of implied. The result
+    is still checked by judge_relevance() before anything is posted — the model
+    skips a joke on one run and answers it on the next, so a prompt alone is not
+    a gate.
+    """
     ceiling = 400 if platform == 'linkedin' else 240
     limit, length_rule = match_length(post_text, ceiling)
     return draft(
-        task=("Write Vishal's comment on this post. The goal is that other engineers "
-              "reading the thread find it worth reading, so add a specific technical "
-              "observation from his own experience. Do not compliment the author.\n"
+        task=("Write Vishal's comment on this post, as a reply to what the author "
+              "actually said. Engage with their specific claim, question or example, "
+              "in their terms. A technical detail from his own work belongs only if it "
+              "bears directly on their point.\n"
+              "Reply with exactly SKIP if any of these hold: the post is a joke, a rant, "
+              "a personal update, a poll, a hiring or self promotion post, or otherwise not "
+              "about engineering; the only way to say something technical would be to "
+              "change the subject to Go, RAG, Kubernetes or his own projects; or the "
+              "comment you would write could sit under almost any post. Do not compliment "
+              "the author.\n"
+              "Never invent a specific past incident, migration, outage, number or "
+              "measurement as Vishal's own experience; a general engineering observation "
+              "is fine, a made-up war story is not. Only facts in the background notes "
+              "may be stated as his.\n"
               f"Length: {length_rule}"),
         context=f"Post author: {author}\nPost:\n{post_text[:2000]}",
         limit=limit,
     )
+
+
+def draft_comment_ctx(context_block, post_text, platform='x'):
+    """A comment drafted from the whole situation, not just the post's text.
+
+    draft_comment() above receives one string: whatever the feed card showed.
+    That is a truncated post with no thread parent, no quoted tweet, no idea who
+    wrote it and no idea what the first four replies already said. Given that,
+    SKIP is frequently the correct answer, which is why the X reply job's logs
+    are full of "[voice] declined" against handles whose posts were perfectly
+    good — the model was being honest about the four lines it was shown.
+
+    `context_block` is x_context.render_for_model(): the full post, the parent,
+    the quote, image alt text, the author's bio and follower count, and the
+    replies already underneath. The extra instructions here are the ones that
+    only become possible once that context exists — answer the specific claim,
+    do not repeat a point someone already made, pitch at who the author is.
+
+    Length is still matched against the post body alone; sizing a reply against
+    the context block would produce four sentences for every post.
+    """
+    ceiling = 400 if platform == 'linkedin' else 240
+    limit, length_rule = match_length(post_text, ceiling)
+    return draft(
+        task=("Below is a post on X and the context around it. Write Vishal's reply.\n"
+              "Reply to THE POST. The parent and the quoted post are there to tell you "
+              "what is being discussed; never answer them instead.\n"
+              "Pick the single most specific claim, number, question or example in the "
+              "post and respond to that one thing. If the post is a list or a "
+              "walkthrough, choose one item from it and say something real about that "
+              "item: a caveat, a failure mode, a number, a case where it does not hold. "
+              "Never summarise the post back to its author.\n"
+              "Replies already posted are listed. Do not repeat a point any of them "
+              "already made, and do not contradict the author on something they already "
+              "conceded there. The fifth version of the same comment is worth nothing.\n"
+              "Say something true, specific, and recognisable to someone who does this "
+              "work. Disagreeing is fine. Agreeing while adding nothing is not: find the "
+              "caveat instead.\n"
+              # The SKIP list used to also cover jokes, rants, personal updates, self
+              # promotion, "could sit under almost any post", and agreement with
+              # nothing added. On a live shortlist that declined every single
+              # candidate, including a 44k-follower MinIO explainer that was exactly
+              # the kind of post this job exists to answer: a long explainer reads as
+              # self promotion, and a list reads as bait. The generic-reply case is
+              # already caught downstream by judge_relevance(), which scores it a 1,
+              # so making it a SKIP here only taught the model to bail instead of
+              # trying. What is left is the set of posts that genuinely cannot be
+              # answered.
+              "Reply with exactly SKIP only if the post is spam, crypto or web3 "
+              "promotion, a hiring ad, pure engagement bait with no claim in it, or has "
+              "no engineering content at all. A long explainer, a list, a tutorial or a "
+              "strong opinion is NOT a reason to skip. Those are the posts worth "
+              "replying to.\n"
+              "Do not compliment the author and do not open by restating their post.\n"
+              "Never invent a specific past incident, migration, outage, number or "
+              "measurement as Vishal's own experience; a general engineering "
+              "observation is fine, a made-up war story is not. Only facts in the "
+              "background notes may be stated as his.\n"
+              f"Length: {length_rule}"),
+        context=context_block,
+        limit=limit,
+    )
+
+
+# Minimum judge score for a drafted comment to be posted. 5 means it answers the
+# post's specific point; 3 means same topic, generic; 1 means it changed the
+# subject. 4 leaves room for a good reply that broadens slightly while still
+# refusing the ones that would fit under any post.
+RELEVANCE_MIN = 4
+
+
+def judge_relevance(post_text, reply_text):
+    """Score 1-5 how directly `reply_text` engages with `post_text`.
+
+    A second, cheap model call with the temperature at zero, asked a narrow
+    question. It exists because every irrelevant comment this system has posted
+    was a *relevance* failure, not a style one: the text was fine, it just had
+    nothing to do with the post. humanize() cannot catch that. Returns None when
+    the call fails, and callers must treat None as "do not post" — an unverified
+    reply to a hand-picked target is the one outcome worse than silence.
+    """
+    if not post_text or not reply_text:
+        return None
+    raw = _chat([
+        {'role': 'system', 'content': (
+            "You grade whether a social media reply actually responds to the post it is "
+            "attached to. Answer with a single digit 1-5 and nothing else.\n"
+            "5: directly addresses the post's specific claim, question or example.\n"
+            "4: clearly about the post's point, adds a related angle.\n"
+            "3: same general topic but generic; says nothing about this particular post.\n"
+            "2: only loosely connected, mostly about the replier's own work.\n"
+            "1: changes the subject, or could be pasted under almost any post.\n"
+            "A reply that pivots to the replier's own tech stack when the post did not ask "
+            "about it is a 1 or 2, however well written.")},
+        {'role': 'user', 'content': f"POST:\n{post_text[:1500]}\n\nREPLY:\n{reply_text[:600]}\n\nScore:"},
+    ], max_tokens=40, temperature=0.0, label='judge', allow_partial=True)
+    if raw is None:
+        return None
+    m = re.match(r'\s*\**\s*([1-5])\b', raw)
+    if not m:
+        print(f'[voice] judge returned no score: {raw[:60]!r}', file=sys.stderr)
+        return None
+    return int(m.group(1))
+
+
+def strip_x_chrome(text):
+    """Cut the header and footer X's article inner_text() carries.
+
+    An article reads "Name\\n@handle\\n·\\n1h\\n<body>\\n12\\n3\\n1.2K". Sending that
+    whole thing to the model burns the length heuristic on boilerplate and lets
+    the display name leak into the reply. Returns the body, or the input when
+    the pattern is not found.
+    """
+    if not text:
+        return text
+    lines = text.split('\n')
+    try:
+        dot = next(i for i, l in enumerate(lines) if l.strip() == '·')
+    except StopIteration:
+        return text.strip()
+    body = lines[dot + 2:]                       # skip the '·' and the timestamp
+    while body and (not body[-1].strip() or re.fullmatch(r'[\d.,]+[KM]?', body[-1].strip())):
+        body.pop()
+    out = '\n'.join(body).strip()
+    return out or text.strip()
 
 
 POST_ANGLES = [

@@ -2,21 +2,22 @@
   "name": "social_inbound_reply_x_linkedin",
   "schedule": {
     "kind": "interval",
-    "minutes": 120,
-    "display": "every 120m"
+    "minutes": 240,
+    "display": "every 240m"
   },
-  "schedule_display": "every 120m",
+  "schedule_display": "every 240m",
   "repeat": {
     "times": null
   },
-  "enabled": true,
+  "enabled": false,
   "no_agent": false,
-  "prompt": "Run the inbound notifications responder for both X/Twitter and LinkedIn:\n~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/auto_reply_inbound.py\n\nCheck the script output for: replied_to, reply_text, status. If the script failed, report the error.\n\nIMPORTANT: Apply fake job filtering. Skip posts that:\n- Ask for money/upfront payment\n- Have vague company names or no company at all\n- Look like recruitment agency spam with generic descriptions\n- Ask for sensitive personal info (PAN, Aadhaar, bank details) upfront\n- Promise unrealistically high salaries for the role/location\n- Use phrases like \"work from home opportunity\", \"earn thousands daily\", \"no experience needed\"\n- Are from accounts with no profile picture, very few followers, and only job postings\n- Have broken links or suspicious shortened URLs",
+  "prompt": "Run the inbound notifications responder for both X/Twitter and LinkedIn:\n~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/auto_reply_inbound.py\n\nCRITICAL: Only reply to DIRECT mentions or replies (people @mentioning Vishal or replying to his posts). Do NOT reply to notifications about other people's activity. Max 1-2 replies per run. Keep replies short, natural, and unique \u2014 never use the same pattern twice.",
   "enabled_toolsets": [
     "terminal",
     "file"
   ],
-  "model": "deepseek/deepseek-v4-flash",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
   "deliver": "origin",
   "origin": {
     "platform": "whatsapp"

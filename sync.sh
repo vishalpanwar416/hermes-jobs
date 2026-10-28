@@ -32,7 +32,10 @@ fi
 # Only the files this repo tracks move. The live directory also holds ad-hoc
 # debugging scripts and .env files that deliberately stay out of git, so a
 # mirroring --delete would destroy them.
-mapfile -t FILES < <(cd "$REPO/scripts" && ls -1)
+# Files only. A __pycache__ left behind by a test run is a directory, and with
+# set -e the cp that refused it aborted the push halfway through the list —
+# which is how a "done" looked like a full sync while five scripts stayed stale.
+mapfile -t FILES < <(cd "$REPO/scripts" && find . -maxdepth 1 -type f -printf '%f\n' | sort)
 
 if [[ "$MODE" == push ]]; then
   echo "repo -> $LIVE"

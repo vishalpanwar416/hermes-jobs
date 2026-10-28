@@ -11,13 +11,15 @@
   },
   "enabled": true,
   "no_agent": false,
-  "prompt": "Run the feed monitors for both LinkedIn and X:\n1. ~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/auto_reply_x.py\n2. ~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/auto_reply_linkedin.py\n\nReport what each script found: comments, mentions, and any job posts detected.\n\nIMPORTANT: Apply fake job filtering. Skip posts that:\n- Ask for money/upfront payment\n- Have vague company names or no company at all\n- Look like recruitment agency spam with generic descriptions\n- Ask for sensitive personal info (PAN, Aadhaar, bank details) upfront\n- Are from accounts with no profile picture, very few followers, and only job postings\n- Promise unrealistically high salaries for the role/location\n- Use phrases like \"work from home opportunity\", \"earn thousands daily\", \"no experience needed\"\n- Have broken links or suspicious shortened URLs\n\nOnly engage with genuine job posts from verified company accounts or known recruiters.",
+  "prompt": "The script output above holds two JSON lists: X_FEED_MONITOR (posts from the X timeline) and LINKEDIN_FEED_MONITOR (LinkedIn feed posts already scored genuine / review / fake by code). Do not run the monitors yourself; they have already run.\n\nReport what each monitor found: for every post kept, one line with author, role or topic, and the verdict. Skip posts marked fake. If a monitor printed an empty list or \"Skipping run\" (Chrome profile busy), say so in one line.\n\nApply the fake-job filter to anything marked review: drop posts that ask for money or personal documents upfront, have no identifiable company, promise unrealistic pay, use \"earn daily / no experience needed\" phrasing, or are Cfbr chains.\n\nAUTO-SEND RULE: for a genuine job post that includes a clear email address, run `python3 ~/.hermes/scripts/detect_resume.py \"Role Title\" \"JD Text\"` to pick the resume, then send the application with send_email.py and report to, subject, role and resume used. Never send to a post you judged fake.\n\nIf both lists are empty and nothing was sent: respond with exactly [SILENT].",
+  "script": "run_social_feed_scan.sh",
   "enabled_toolsets": [
     "terminal",
     "file",
     "web"
   ],
-  "model": "deepseek/deepseek-v4-flash",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
   "deliver": "origin",
   "origin": {
     "platform": "whatsapp"

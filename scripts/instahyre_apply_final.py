@@ -1,146 +1,127 @@
 #!/usr/bin/env python3
-"""
-Instahyre Auto-Apply - Robust version.
-"""
-import asyncio, os, json, sys
+"""Instahyre Auto-Apply - v3: uses correct apply endpoint."""
+import asyncio, os, json, sys, subprocess, time
 from pathlib import Path
-from playwright.async_api import async_playwright
+
+AUTOMATION_PROFILE = os.path.expanduser("~/.hermes/data/chrome_automation_profile")
+os.makedirs(AUTOMATION_PROFILE, exist_ok=True)
+for f in ["SingletonLock", "SingletonSocket", "SingletonCookie"]:
+    p = os.path.join(AUTOMATION_PROFILE, f)
+    if os.path.exists(p): os.remove(p)
 
 env_path = Path.home() / ".hermes" / ".env"
-email = password = None
+EMAIL = PASSWORD = None
 for line in env_path.read_text().splitlines():
     if line.startswith("INSTAHYRE_EMAIL="):
-        email = line.split("=", 1)[1].strip().strip('"').strip("'")
+        EMAIL = line.split("=", 1)[1].strip().strip('"').strip("'")
     elif line.startswith("INSTAHYRE_PASSWORD="):
-        password = line.split("=", 1)[1].strip().strip('"').strip("'")
+        PASSWORD = line.split("=", 1)[1].strip().strip('"').strip("'")
+
+MATCH_KW = ["golang", "backend", "devops", "sre", "kubernetes", "full stack",
+            "fullstack", "python", "gcp", "cloud", "sde", "software engineer",
+            "infrastructure", "node", "nodejs", "mern", "java", "distributed", "platform"]
+EXCLUDE_KW = ["senior", "lead", "manager", "principal", "staff", "architect",
+              "frontend", "front-end", "ui", "ux", "react", "angular",
+              "ios", "android", "qa", "test", "data scientist", "ml engineer",
+              "vue", "css", "html", "sdet", "analyst", "director", "cto"]
+
+def matches(t):
+    t = t.lower()
+    if not any(kw in t for kw in MATCH_KW): return False
+    if any(kw in t for kw in EXCLUDE_KW): return False
+    return True
+
+def start_xvfb():
+    for n in range(91, 110):
+        if os.path.exists(f"/tmp/.X{n}-lock"): continue
+        proc = subprocess.Popen(["Xvfb", f":{n}", "-screen", "0", "1440x900x24"],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(1.5)
+        if proc.poll() is None: return proc, f":{n}"
+    raise RuntimeError("no Xvfb display")
 
 async def main():
+    xvfb, d = start_xvfb()
+    os.environ["DISPLAY"] = d
+    result = {"status": "ok", "jobs_applied": 0, "jobs_found": 0}
+
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        xvfb.terminate()
+        print(json.dumps({"error": "playwright not installed"}))
+        return
+
     async with async_playwright() as p:
-        context = await p.chromium.launch_persistent_context(
-            user_data_dir=os.path.expanduser("~/.config/google-chrome"),
-            headless=False,
-            args=["--no-sandbox", "--disable-gpu"],
+        ctx = await p.chromium.launch_persistent_context(
+            user_data_dir=AUTOMATION_PROFILE, channel="chrome",
+            headless=False, args=["--no-sandbox", "--disable-gpu"],
         )
-        page = await context.new_page()
+        page = await ctx.new_page()
+        page.set_default_timeout(45000)
 
-        try:
-            # === LOGIN ===
-            print("Logging in...")
-            await page.goto("https://www.instahyre.com/login/", timeout=30000)
-            await asyncio.sleep(5)
-            for i in range(60):
-                if "login" not in page.url.lower():
-                    break
-                try:
-                    if await page.locator('input[name="email"]').first.is_visible(timeout=1000):
-                        break
-                except: pass
-                await asyncio.sleep(2)
-            if "login" in page.url.lower():
-                await page.locator('input[name="email"]').first.fill(email, timeout=10000)
-                await page.locator('input[type="password"]').first.fill(password, timeout=10000)
-                await page.locator('button[type="submit"]').first.click()
-                await asyncio.sleep(5)
-            print(f"✅ Logged in")
+        # Go to opportunities page
+        await page.goto("https://www.instahyre.com/candidate/opportunities/",
+                        wait_until="domcontentloaded", timeout=60000)
+        await asyncio.sleep(6)
 
-            # === GET OPPORTUNITIES ===
-            await page.goto("https://www.instahyre.com/candidate/opportunities/?matching=", timeout=20000)
-            await asyncio.sleep(5)
+        if "login" in page.url.lower():
+            await page.locator('input[name="email"]').first.fill(EMAIL)
+            await page.locator('input[type="password"]').first.fill(PASSWORD)
+            await page.locator('button[type="submit"]').first.click()
+            await asyncio.sleep(6)
 
-            # Get all job info in one JS call
-            jobs_info = await page.evaluate("""() => {
-                const viewBtns = Array.from(document.querySelectorAll('button'));
-                const viewOnly = viewBtns.filter(b => b.innerText.trim() === 'View \u00bb');
-                return viewOnly.slice(0, 30).map((btn, idx) => {
-                    // Walk up to find the card container
-                    let el = btn.parentElement;
-                    for (let i = 0; i < 5; i++) {
-                        if (el?.querySelector('a[href*="/job/"]')) break;
-                        el = el?.parentElement;
-                        if (!el) break;
-                    }
-                    return {
-                        index: idx,
-                        text: el ? el.innerText.substring(0, 200) : btn.innerText,
-                        hasApplyPage: !!(el?.querySelector('a[href*="/job/"]'))
-                    };
-                });
-            }""")
+        # Wait for Angular
+        import re
+        for _ in range(30):
+            body = await page.locator("body").inner_text()
+            if re.search(r'Interested\s*\((\d+)\)', body):
+                break
+            await asyncio.sleep(2)
 
-            print(f"Found {len(jobs_info)} jobs")
+        # Fetch interested jobs
+        jobs = await page.evaluate("""async (limit) => {
+            const r = await fetch('/api/v1/candidate_opportunities/candidate_matching?interest_facet=1&limit='+limit+'&offset=0', {credentials: 'include'});
+            const j = await r.json();
+            return (j.objects || []).map(o => ({
+                id: o.id, job_id: ((o.job||{}).id||''),
+                title: (o.job||{}).title||'',
+                company: (o.employer||{}).name||'',
+                score: o.score,
+                applied: o.interview_status >= 2,
+            }));
+        }""", 200)
 
-            # Filter matching jobs
-            MATCH_KW = ["go", "golang", "backend", "platform", "devops", "sre", "kubernetes",
-                        "k8s", "full stack", "fullstack", "python", "gcp", "cloud",
-                        "sde", "software", "engineer", "infrastructure"]
-            EXCLUDE_KW = ["senior", "lead", "manager", "principal", "staff", "architect",
-                          "frontend", "front-end", "ui", "ux", "react", "angular",
-                          "ios", "android", "qa", "test", "data scientist", "ml engineer"]
+        result["total"] = len(jobs)
+        target = [j for j in jobs if matches(j.get('title','')) and not j.get('applied')]
+        result["jobs_found"] = len(target)
 
-            matching = []
-            for job in jobs_info:
-                t = job["text"].lower()
-                if any(kw in t for kw in MATCH_KW) and not any(kw in t for kw in EXCLUDE_KW):
-                    matching.append(job)
-                    print(f"  ✅ {job['text'][:80]}")
+        # Apply via POST to /apply/ endpoint
+        for job in target[:50]:
+            post = await page.evaluate("""async (jobId) => {
+                try {
+                    const r = await fetch('/api/v1/candidate_opportunities/candidate_matching/apply/', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({"is_interested": true, "job_id": jobId})
+                    });
+                    const txt = await r.text();
+                    return {status: r.status, ok: r.ok, body: txt.substring(0, 100)};
+                } catch(e) { return {error: e.message}; }
+            }""", job['id'])
 
-            print(f"\nMatching jobs: {len(matching)}")
+            if post.get('ok'):
+                result["jobs_applied"] += 1
+                print(f"  ✅ {job['title']} @ {job['company']}")
 
-            # Apply to matching jobs
-            applied = 0
-            for job in matching:
-                idx = job["index"]
-                print(f"\nApplying to job {idx+1}...")
+        await ctx.close()
 
-                # Click the View button at this index
-                view_btns = page.locator('button:has-text("View")')
-                await view_btns.nth(idx).click()
-                await asyncio.sleep(5)
+    xvfb.terminate()
+    try: xvfb.wait(timeout=3)
+    except: xvfb.kill()
 
-                # Look for Apply button
-                apply_btn = None
-                for sel in ['button:has-text("Apply")', 'a:has-text("Apply")', 'button[class*="apply"]', 'a[href*="apply"]', 'input[value*="Apply"]']:
-                    try:
-                        btn = page.locator(sel).first
-                        if await btn.is_visible(timeout=2000):
-                            apply_btn = btn
-                            break
-                    except: continue
+    print(f"\nApplied: {result['jobs_applied']}/{result['jobs_found']}")
+    print(json.dumps(result))
 
-                if apply_btn:
-                    # Check if it's disabled
-                    try:
-                        disabled = await apply_btn.is_disabled()
-                    except:
-                        disabled = False
-                    btn_text = await apply_btn.inner_text()
-                    print(f"  Apply button: '{btn_text[:40]}' disabled={disabled}")
-                    if not disabled:
-                        await apply_btn.click()
-                        await asyncio.sleep(3)
-                        applied += 1
-                        print(f"  ✅ Applied! ({applied})")
-                    else:
-                        print(f"  ❌ Apply button disabled")
-                else:
-                    print(f"  ❌ No Apply button found")
-
-                # Go back
-                await page.go_back()
-                await asyncio.sleep(3)
-
-            print(json.dumps({
-                "status": "success",
-                "jobs_found": len(jobs_info),
-                "jobs_matched": len(matching),
-                "jobs_applied": applied
-            }))
-
-        except Exception as e:
-            print(json.dumps({"error": str(e)}))
-        finally:
-            await asyncio.sleep(3)
-            await context.close()
-
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())

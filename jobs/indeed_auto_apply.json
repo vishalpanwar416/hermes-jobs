@@ -1,0 +1,23 @@
+{
+  "name": "indeed_auto_apply",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 */4 * * *",
+    "display": "0 */4 * * *"
+  },
+  "schedule_display": "0 */4 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "The script output above is the JSON summary from the Indeed auto-apply run (indeed_auto_apply.py). Do not run anything yourself; only format that output for WhatsApp.\n\nThe same job often appears several times because several search queries find it. List each distinct job (same title and company) exactly once, keeping its first URL.\n\nIf \"applied\" has entries:\n\u2705 Applied: <title> @ <company> (<location>)\n<job_url>\n\nIf \"needs_review\" has entries:\n\u270b Screening: <title> @ <company>\n<job_url>\n\nIf \"external\" has entries:\n\ud83d\udd17 Company site: <title> @ <company>\n\nIf \"failed\" has entries:\n\u274c Failed: <title> @ <company> \u2014 <reason>\n\nEnd with one line: \"Indeed today: <count> applied\"\nIf the output contains \"INDEED_NOT_LOGGED_IN\": say exactly \"Indeed: session expired, needs a manual Google login from a desktop session\" and nothing else.\nIf applied, needs_review, external and failed are all empty and there is no error: respond with exactly [SILENT].",
+  "script": "indeed_auto_apply.py",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
+  "deliver": "origin",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "d34ad4643ad1"
+}

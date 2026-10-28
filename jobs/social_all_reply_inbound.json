@@ -11,12 +11,14 @@
   },
   "enabled": true,
   "no_agent": false,
-  "prompt": "Run the unified 30-minute social reply monitor for both LinkedIn and X:\n~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/auto_respond_social_replies.py\n\nIf any new replies or comments were generated and posted to people interacting with Vishal:\n- Output a clean summary with the platform (LinkedIn / X), the user, what they said, and the reply sent.\nIf no new mentions or comments were found requiring a response, output [SILENT].",
+  "prompt": "The script output above is the JSON result of the unified 30-minute inbound reply monitor for LinkedIn and X (auto_respond_social_replies.py). Do not run anything yourself; only format that output for WhatsApp.\n\nIf the list is non-empty: for each entry output one block with the platform (LinkedIn / X), the person, what they said (short), and the reply that was posted.\nIf the list is empty, or the output says \"Skipping run\" because the Chrome profile was busy: respond with exactly [SILENT].",
+  "script": "auto_respond_social_replies.py",
   "enabled_toolsets": [
     "terminal",
     "file"
   ],
-  "model": "deepseek/deepseek-v4-flash",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
   "deliver": "origin",
   "origin": {
     "platform": "whatsapp"

@@ -1,0 +1,23 @@
+{
+  "name": "foundit_auto_apply",
+  "schedule": {
+    "kind": "cron",
+    "expr": "30 2-23/4 * * *",
+    "display": "30 2-23/4 * * *"
+  },
+  "schedule_display": "30 2-23/4 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "The script output above is the JSON summary from the Foundit auto-apply run (foundit_auto_apply.py). Do not run anything yourself; only format that output for WhatsApp.\n\nIf \"applied\" has entries:\n\u2705 Applied:\n- <title> @ <company> (<location>, <experience>)\nOmit the parenthesis entirely when location and experience are both null; never print the word None.\n\nIf \"needs_review\" has entries:\n\u270b Needs review (clicked apply, no confirmation):\n- <title> @ <company>\n\nIf \"failed\" has entries:\n\u274c Failed:\n- <title> @ <company> \u2014 <reason>\n\nEnd with one line: **Foundit today: X applied, Y filtered**\nDo NOT list the filtered jobs individually; there are usually 40+ and they are almost all experience-band rejections. Just the count.\nIf the output reports a login or session error: tell Vishal the Foundit session expired and he needs to log in again from a desktop session.\nIf nothing applied, nothing needs review and nothing failed: respond with exactly [SILENT].",
+  "script": "foundit_auto_apply.py",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
+  "deliver": "origin",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "6f485ee9c6eb"
+}

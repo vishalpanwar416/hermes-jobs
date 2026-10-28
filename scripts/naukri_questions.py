@@ -41,20 +41,28 @@ def load_profile():
         return json.load(f)
 
 
-def _openrouter_key():
+# 2026-09-08: OpenRouter account died (401 "User not found."); these now point
+# at Gemini's OpenAI-compatible endpoint, same payload shape.
+_API_URL = os.environ.get(
+    "SCRIPT_LLM_API_URL",
+    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
+_MODEL = os.environ.get("NAUKRI_AI_MODEL", "gemini-3.5-flash-lite")
+
+
+def _llm_key():
     with open(ENV_PATH) as f:
         for line in f:
-            if line.startswith("OPENROUTER_API_KEY="):
+            if line.startswith("SCRIPT_LLM_API_KEY="):
                 return line.split("=", 1)[1].strip().strip('"')
     return None
 
 
 def llm_answer(question, options, profile):
-    """Ask the configured OpenRouter model to answer as Vishal, constrained to
-    the profile. Returns the chosen option text or a short free-text answer."""
+    """Ask the configured model to answer as Vishal, constrained to the
+    profile. Returns the chosen option text or a short free-text answer."""
     import requests
 
-    key = _openrouter_key()
+    key = _llm_key()
     if not key:
         return None
     opts_block = ("Options (answer with EXACTLY one of these):\n- "
@@ -72,10 +80,10 @@ def llm_answer(question, options, profile):
     )
     try:
         r = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
+            _API_URL,
             headers={"Authorization": f"Bearer {key}"},
             json={
-                "model": "deepseek/deepseek-v4-flash",
+                "model": _MODEL,
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 60,
                 "temperature": 0,

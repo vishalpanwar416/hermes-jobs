@@ -1,0 +1,20 @@
+{
+  "name": "social_x_post_retry",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 21 * * *",
+    "display": "0 21 * * *"
+  },
+  "schedule_display": "0 21 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": true,
+  "prompt": "Retry the X post if the 20:30 slot failed. x_post_publish.py exits [SILENT] when a post is already recorded for today, so this is a no-op on a normal evening.",
+  "script": "x_post_publish.py",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
+  "deliver": "local",
+  "id": "60b3db0b028d"
+}

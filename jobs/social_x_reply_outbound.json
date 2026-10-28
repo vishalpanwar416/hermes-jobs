@@ -2,21 +2,23 @@
   "name": "social_x_reply_outbound",
   "schedule": {
     "kind": "interval",
-    "minutes": 180,
-    "display": "every 180m"
+    "minutes": 90,
+    "display": "every 90m"
   },
-  "schedule_display": "every 180m",
+  "schedule_display": "every 90m",
   "repeat": {
     "times": null
   },
   "enabled": true,
-  "no_agent": false,
-  "prompt": "Run the high-signal auto-reply script:\n~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/auto_reply_growth.py\n\nIf any replies were posted:\n- Output a short summary showing the author, the original topic, and the reply posted so Vishal can see his engagement.\nIf no relevant threads were found or no replies were posted, output [SILENT].",
+  "no_agent": true,
+  "prompt": "Script job, no agent. Runs auto_reply_growth.py with no arguments: up to 2 replies a run against a 12/day cap, sources targets+feed+topic. Rewritten 2026-09-16 \u2014 x_discover.py finds candidates from the target list (6h window), the home timeline and a topic search; x_context.py opens each permalink and reads the full post, thread parent, quoted tweet, author bio/followers and existing replies before anything is drafted. Non-targets must clear a follower floor, age ceiling, saturation check and reach score, then the model's SKIP and judge_relevance at 4/5. This prompt is not executed. See X_GROWTH_PLAN.md section 5 and X_TUNING_LOG.md 2026-09-16.",
+  "script": "auto_reply_growth.py",
   "enabled_toolsets": [
     "terminal",
     "file"
   ],
-  "model": "deepseek/deepseek-v4-flash",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
   "deliver": "origin",
   "origin": {
     "platform": "whatsapp"

@@ -1,0 +1,25 @@
+{
+  "_comment": "Target list for X engagement. See X_GROWTH_PLAN.md section 3. Seeded only with handles observed engaging in x_growth.db as of 2026-09-05 — every other entry must be added by hand or by the prospecting pass described in the plan. Do not populate this from an LLM guess; wrong handles waste the whole strategy.",
+  "_tiers": {
+    "tier_1_inner": "15 accounts. Engage weekly, without fail.",
+    "tier_2_founders": "50 accounts. Seed/Series-A technical founders, dev tools + AI infra + data.",
+    "tier_3_vc": "25 accounts. Partners/principals who post technical takes, not deal announcements.",
+    "tier_4_peers": "60 accounts. Peers building in public. Rotate; drop after 6 weeks of no reciprocity."
+  },
+  "tier_1_inner": [
+    { "handle": "wagslane", "why": "boot.dev founder, Go audience overlap", "cadence": "weekly", "status": "seed" },
+    { "handle": "mihail_eric", "why": "AI/ML infra, replied-to previously, real technical depth", "cadence": "weekly", "status": "seed" },
+    { "handle": "venkateshdotdev", "why": "backend content, format reference, Indian dev audience", "cadence": "weekly", "status": "seed" }
+  ],
+  "tier_2_founders": [
+    { "handle": "sachaarbonel", "why": "building @etolith, self-healing cloud for agents; Go/Rust, ex real-time inference pipelines. Followed by @wagslane, posting as of 2026-09-03. Promoted from x_target_candidates.json 2026-09-10.", "cadence": "weekly", "status": "promoted" }
+  ],
+  "tier_3_vc": [
+    { "handle": "ccgong", "why": "investing in consumer tech & AI @MenloVentures, replied to @mihail_eric. Promoted from x_target_candidates.json 2026-09-07.", "cadence": "weekly", "status": "promoted" }
+  ],
+  "tier_4_peers": [],
+  "_excluded": {
+    "_comment": "Engagement-farm accounts previously auto-replied to. Never target these.",
+    "handles": ["MentorWebDev", "TanzilaSha9574", "vibeonX69", "codewithkhalil", "0xlelouch_", "AiswaryaVenkit1"]
+  }
+}

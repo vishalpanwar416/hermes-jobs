@@ -1,0 +1,24 @@
+{
+  "name": "x_daily_review",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 8 * * *",
+    "display": "0 8 * * *"
+  },
+  "schedule_display": "0 8 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "The script output above is the complete data for the daily review of Vishal's X growth system, gathered by code: today's date, the x_metrics.py report, the target-list tier counts, every reply posted today (flagged TARGET or off-list), today's [judge] lines from the reply job, and confirmation that today's X_TUNING_LOG.md section has already been written. Do not run any tool, read any file, or edit anything; everything you need is above. Write the review only. This review is delivered once a day and must never be [SILENT].\n\nACCURACY RULES: every number you state must appear verbatim in the X_METRICS_REPORT block. Never count anything yourself. Do not mention how many times any job ran.\n\nTargets (from X_GROWTH_PLAN.md section 11): inbound replies is the north star, baseline 4/week, target 15/week by 2026-10-31. Tier hit rate target 90%; \"n/a\" on a zero-reply day is not a failure. Likes: 5 per handle per week is the binding cap while the list is small, so \"every handle at cap\" with zero likes means the cap is working. Follows: zero while the list is under 10 handles is by design. Replies sent: zero means no target handle posted in a window or the judge dropped every draft; both are correct. Posts: 5/week, Friday and Saturday deliberately empty.\n\nReport, no preamble, no headings:\n1. Copy the GATE LINE from the TARGET_LIST block verbatim as the first line. Do not rephrase it or recount anything.\n2. Paste the X_METRICS_REPORT block as-is.\n3. If any reply today is flagged TARGET, say in one sentence whether the reply actually addresses the post text shown; an off-topic reply to a target is the most damaging event and must be surfaced.\n4. Diagnose ONE thing from the data, in two or three sentences, using the rules above. If every number is flat and explained by the caps or the gate, say so in one sentence.\n5. End with: \"Log: today's section written by code, no change.\"",
+  "script": "x_daily_review_gather.py",
+  "skill": "dev-social-growth",
+  "skills": [
+    "dev-social-growth"
+  ],
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
+  "deliver": "@work_report",
+  "id": "5c17fca4c8d4"
+}

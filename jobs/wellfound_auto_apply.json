@@ -1,0 +1,23 @@
+{
+  "name": "wellfound_auto_apply",
+  "schedule": {
+    "kind": "cron",
+    "expr": "30 */4 * * *",
+    "display": "30 */4 * * *"
+  },
+  "schedule_display": "30 */4 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": false,
+  "prompt": "The script output above is the JSON summary from the Wellfound auto-apply run (wellfound_auto_apply.py). Do not run anything yourself; only format that output for WhatsApp.\n\nIf \"applied\" has entries:\n\u2705 Applied:\n- <title> @ <company>\n  <job_url>\n\nIf \"needs_review\" has entries:\n\u270b Needs review (submitted but unclear):\n- <title> @ <company>\n\nIf \"external\" has entries:\n\ud83d\udd17 Company site (redirect):\n- <title> @ <company>\n\nIf \"failed\" has entries:\n\u274c Failed:\n- <title> @ <company> \u2014 <reason>\n\nIf any of the above lists is non-empty, end with one line: **Wellfound today: X applied, Y needs review**\nIf the output contains \"WF_LOGIN_FAILED\": tell Vishal the Wellfound session expired and he needs to log in again from a desktop session.\nIf the output contains \"note\": \"daily cap\": return [SILENT].\nIf applied, needs_review, external and failed are ALL empty and there is no error: return exactly [SILENT].",
+  "script": "wellfound_auto_apply.py",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
+  "deliver": "origin",
+  "origin": {
+    "platform": "whatsapp"
+  },
+  "id": "eb54dc313f18"
+}

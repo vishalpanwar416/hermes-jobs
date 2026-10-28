@@ -11,9 +11,11 @@
   },
   "enabled": true,
   "no_agent": false,
-  "prompt": "Run the Instahyre auto-apply script. Login with credentials from ~/.hermes/.env (INSTAHYRE_EMAIL and INSTAHYRE_PASSWORD), find matching backend/Go/DevOps jobs, and apply. Report the results.",
-  "script": "instahyre_apply_final.py",
+  "prompt": "The script output above is the JSON summary from the Instahyre auto-apply run (instahyre_auto_apply.py). Do not run anything yourself; only format that output for WhatsApp.\n\nIf \"applied\" has entries:\n\u2705 Applied:\n- <title> @ <company> (<location>)\n\nIf \"needs_review\" has entries:\n\u270b Needs review:\n- <title> @ <company> \u2014 <detail>\n\nIf \"failed\" has entries:\n\u274c Failed:\n- <title> @ <company> \u2014 <detail>\n\nEnd with one line: **Instahyre today: X applied, Y filtered**\nDo not list filtered jobs individually, just the count.\nIf the output contains \"INSTAHYRE_NOT_LOGGED_IN\": tell Vishal the Instahyre session in the automation profile expired and needs a manual login.\nIf applied, needs_review and failed are all empty: respond with exactly [SILENT].",
+  "script": "instahyre_auto_apply.py",
   "workdir": "/home/vishalpanwar",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
   "deliver": "origin",
   "origin": {
     "platform": "whatsapp"

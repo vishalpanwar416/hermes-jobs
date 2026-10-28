@@ -11,13 +11,15 @@
   },
   "enabled": true,
   "no_agent": false,
-  "prompt": "Run search / scrape jobs for Backend Engineer / Full Stack Engineer / SDE roles on Naukri and Indeed. Use the terminal to run the search scripts.\n\nIMPORTANT: Apply fake job filtering. Skip jobs that:\n- Ask for money/upfront payment\n- Have vague company names or no company at all\n- Look like recruitment agency spam with generic descriptions\n- Ask for sensitive personal info (PAN, Aadhaar, bank details) upfront\n- Promise unrealistically high salaries for the role/location\n- Use phrases like \"work from home opportunity\", \"earn thousands daily\", \"no experience needed\"\n- Have broken links or suspicious shortened URLs\n- Have no company details, website, or verifiable information\n\nReport what jobs were found, filtered out, and why.",
+  "prompt": "The script output above is from the Indeed job-board scraper (scrape_jobs_cron.py): it lists [MATCH] lines while scanning, then \"Total newly found jobs\", \"Inserted into database\" and one block per newly inserted job with title, company, experience, location, salary and link. Do not run anything yourself; only format that output for WhatsApp.\n\nFor each newly inserted job, apply the fake-job filter and drop any that: ask for money or documents upfront, have no identifiable company, promise unrealistic pay for the role and location, use \"work from home opportunity / earn daily / no experience needed\" phrasing, or have a suspicious shortened link.\n\nOutput:\n\ud83e\udded New jobs (Indeed): one line per kept job as \"<title> @ <company> (<experience>, <location>)\" followed by the link on the next line.\nThen one line: \"Filtered out: N (<one-phrase reason each>)\" if any were dropped.\nNaukri is not scraped by this script (Cloudflare blocks it); do not mention Naukri.\n\nIf \"Inserted into database: 0\": respond with exactly [SILENT].",
+  "script": "scrape_jobs_cron.py",
   "enabled_toolsets": [
     "terminal",
     "file",
     "web"
   ],
-  "model": "deepseek/deepseek-v4-flash",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
   "deliver": "@job_alerts",
   "origin": {
     "platform": "whatsapp"

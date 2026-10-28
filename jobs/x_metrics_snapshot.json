@@ -1,0 +1,19 @@
+{
+  "name": "x_metrics_snapshot",
+  "schedule": {
+    "kind": "cron",
+    "expr": "45 23 * * *",
+    "display": "45 23 * * *"
+  },
+  "schedule_display": "45 23 * * *",
+  "repeat": {
+    "times": null
+  },
+  "enabled": true,
+  "no_agent": true,
+  "script": "x_metrics.py",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
+  "deliver": "local",
+  "id": "8987068a40f0"
+}

@@ -13,6 +13,8 @@
   "no_agent": true,
   "script": "run_bait_muter.sh",
   "workdir": "/home/vishalpanwar/.hermes/scripts",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
   "deliver": "local",
   "id": "8f062b8a9310"
 }

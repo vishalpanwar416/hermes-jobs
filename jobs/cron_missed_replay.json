@@ -13,6 +13,8 @@
   "no_agent": true,
   "script": "run_missed_replay.sh",
   "workdir": "/home/vishalpanwar/Development/Aarambh/hermes-agent",
+  "model": "gemini-3.5-flash-lite",
+  "provider": "gemini",
   "deliver": "local",
   "id": "1550b5cc9c98"
 }
