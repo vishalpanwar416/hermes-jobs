@@ -36,9 +36,9 @@ if __name__ == '__main__':
         pass
 
 HOME = os.path.expanduser('~')
-PY = f'{HOME}/Development/Aarambh/hermes-agent/.venv/bin/python'
+PY = f'{HOME}/Development/Utility/Hermes/hermes-agent/.venv/bin/python'
 SCRIPTS = f'{HOME}/.hermes/scripts'
-JOBS_REPO = f'{HOME}/Development/Aarambh/hermes-jobs'
+JOBS_REPO = f'{HOME}/Development/Utility/Hermes/hermes-jobs'
 GROWTH_DB = f'{HOME}/.hermes/data/x_growth.db'
 TUNING_LOG = f'{JOBS_REPO}/X_TUNING_LOG.md'
 TARGETS = f'{JOBS_REPO}/x_targets.json'

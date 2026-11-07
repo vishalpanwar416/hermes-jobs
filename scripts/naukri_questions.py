@@ -12,7 +12,7 @@ Drawer DOM (captured 2026-08-23, ~/.hermes/data/naukri_debug/drawer_dom.html):
   submit:    div.sendMsg ("Save"; parent .send.disabled until a value is set)
 
 Run standalone to answer all pending needs_review jobs from the tracker:
-  ~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/naukri_questions.py
+  ~/Development/Utility/Hermes/hermes-agent/.venv/bin/python ~/.hermes/scripts/naukri_questions.py
 """
 
 import json

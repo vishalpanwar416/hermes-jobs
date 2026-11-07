@@ -36,13 +36,13 @@ if __name__ == '__main__':
         pass
 
 
-ENV_PATH = os.path.expanduser('~/Development/Aarambh/Media-man/.env')
+ENV_PATH = os.path.expanduser('~/Development/Automation/Media-man/.env')
 # Every brand .env holding its own IG_ACCESS_TOKEN gets refreshed on the same
 # weekly schedule. Add new brands here.
 ENV_PATHS = {
     'tabletap': ENV_PATH,
     'sanero': os.path.expanduser(
-        '~/Development/Aarambh/Media-man/brands/sanero/.env'),
+        '~/Development/Automation/Media-man/brands/sanero/.env'),
 }
 REFRESH_URL = 'https://graph.instagram.com/refresh_access_token'
 # Refresh when fewer than this many days remain; a weekly run keeps it far off.

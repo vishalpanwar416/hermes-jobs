@@ -5,5 +5,5 @@ set -euo pipefail
 PIPE_NAME=cron_missed_replay
 export PIPE_NAME
 source "$(dirname "$0")/_log_preamble.sh"
-cd "/home/vishalpanwar/Development/Aarambh/hermes-agent"
-exec "/home/vishalpanwar/Development/Aarambh/hermes-agent/.venv/bin/python" -m cron.missed_queue replay-pending --limit 1 --max-age-hours 24
+cd "/home/vishalpanwar/Development/Utility/Hermes/hermes-agent"
+exec "/home/vishalpanwar/Development/Utility/Hermes/hermes-agent/.venv/bin/python" -m cron.missed_queue replay-pending --limit 1 --max-age-hours 24

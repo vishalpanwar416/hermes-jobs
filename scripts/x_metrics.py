@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 GROWTH_DB = os.path.expanduser('~/.hermes/data/x_growth.db')
 METRICS_DB = os.path.expanduser('~/.hermes/data/x_metrics.db')
-TARGETS = os.path.expanduser('~/Development/Aarambh/hermes-jobs/x_targets.json')
+TARGETS = os.path.expanduser('~/Development/Utility/Hermes/hermes-jobs/x_targets.json')
 HANDLE = 'vishalpanwarr'
 
 
@@ -231,7 +231,7 @@ def snapshot(use_browser=True):
     return row
 
 
-CANDIDATES = os.path.expanduser('~/Development/Aarambh/hermes-jobs/x_target_candidates.json')
+CANDIDATES = os.path.expanduser('~/Development/Utility/Hermes/hermes-jobs/x_target_candidates.json')
 LIST_GOAL = 150
 LIKES_PER_ACCOUNT_PER_WEEK = 5   # mirrors x_target_engage.MAX_LIKES_PER_ACCOUNT_PER_WEEK
 

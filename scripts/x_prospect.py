@@ -33,8 +33,8 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-TARGETS = os.path.expanduser('~/Development/Aarambh/hermes-jobs/x_targets.json')
-CANDIDATES = os.path.expanduser('~/Development/Aarambh/hermes-jobs/x_target_candidates.json')
+TARGETS = os.path.expanduser('~/Development/Utility/Hermes/hermes-jobs/x_targets.json')
+CANDIDATES = os.path.expanduser('~/Development/Utility/Hermes/hermes-jobs/x_target_candidates.json')
 PROFILE = os.path.expanduser('~/.hermes/data/chrome_automation_profile')
 OWN_HANDLE = 'vishalpanwarr'
 

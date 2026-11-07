@@ -40,7 +40,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import x_context
 
-TARGETS_FILE = os.path.expanduser('~/Development/Aarambh/hermes-jobs/x_targets.json')
+TARGETS_FILE = os.path.expanduser('~/Development/Utility/Hermes/hermes-jobs/x_targets.json')
 
 # Replying inside the first hour is worth more than anything else this system
 # does, but a six hour old post from a small account still has a live reply

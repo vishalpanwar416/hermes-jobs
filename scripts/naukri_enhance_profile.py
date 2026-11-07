@@ -19,7 +19,7 @@ from playwright.sync_api import sync_playwright
 
 PROFILE_DIR = os.path.expanduser("~/.hermes/data/chrome_automation_profile")
 PROFILE_URL = "https://www.naukri.com/mnjuser/profile"
-RESUME_BASE = os.path.expanduser("~/Development/Aarambh/jobs/resumes")
+RESUME_BASE = os.path.expanduser("~/Development/Automation/Jobs/jobs/resumes")
 
 # Best resume for backend roles
 BEST_RESUME = os.path.join(RESUME_BASE, "VishalPanwar_sde.pdf")

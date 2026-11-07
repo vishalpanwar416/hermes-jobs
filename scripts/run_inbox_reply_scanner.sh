@@ -10,7 +10,7 @@ PIPE_NAME=inbox_reply_scanner
 export PIPE_NAME
 source "$(dirname "$0")/_log_preamble.sh"
 
-PY="$HOME/Development/Aarambh/hermes-agent/.venv/bin/python"
+PY="$HOME/Development/Utility/Hermes/hermes-agent/.venv/bin/python"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "=== SCAN ==="

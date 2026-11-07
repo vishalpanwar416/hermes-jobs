@@ -26,7 +26,7 @@ The brand-publishing jobs (`tabletap_*`, `sanero_*`, `ig_token_refresh`) were re
 ## The log viewer
 
 ```sh
-~/Development/Aarambh/hermes-agent/.venv/bin/python ui/server.py
+~/Development/Utility/Hermes/hermes-agent/.venv/bin/python ui/server.py
 # http://127.0.0.1:8787
 ```
 

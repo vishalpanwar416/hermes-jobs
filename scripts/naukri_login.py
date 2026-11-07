@@ -2,7 +2,7 @@
 
 Run this from a desktop session (needs a display):
 
-    ~/Development/Aarambh/hermes-agent/.venv/bin/python ~/.hermes/scripts/naukri_login.py
+    ~/Development/Utility/Hermes/hermes-agent/.venv/bin/python ~/.hermes/scripts/naukri_login.py
 
 A Chrome window opens on the shared automation profile at the Naukri login
 page. Log in manually (password or OTP). The script watches for the logged-in

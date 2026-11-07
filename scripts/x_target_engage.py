@@ -29,7 +29,7 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-TARGETS = os.path.expanduser('~/Development/Aarambh/hermes-jobs/x_targets.json')
+TARGETS = os.path.expanduser('~/Development/Utility/Hermes/hermes-jobs/x_targets.json')
 METRICS_DB = os.path.expanduser('~/.hermes/data/x_metrics.db')
 PROFILE = os.path.expanduser('~/.hermes/data/chrome_automation_profile')
 
