@@ -1751,3 +1751,232 @@ Target list: tier_1_inner=3, tier_2_founders=1, tier_3_vc=1, tier_4_peers=0. Rep
 (no replies posted today)
 
 Change: none. The automated review only reports since 2026-09-12; caps, RELEVANCE_MIN and tier promotions are changed by hand.
+
+## 2026-11-05 00:59 — automated daily review, numbers by code
+
+```
+X metrics — 2026-11-05
+
+  followers        n/a
+  replies sent     0
+  inbound replies  0   <- north star
+  likes given      0
+  follows made     0
+  posts published  0
+  tier hit rate    n/a (no replies)   <- share of replies aimed at the target list
+
+  target list      5/150  (t1 3, t2 1, t3 1, t4 0)
+  candidates       494 awaiting human review in x_target_candidates.json
+  like cap         0/5 handles at 5 likes this week
+
+  7-day totals (1 days recorded)
+    replies 0   inbound 0   likes 0   follows 0   posts 0
+    avg tier hit rate 0%
+```
+
+Target list: tier_1_inner=3, tier_2_founders=1, tier_3_vc=1, tier_4_peers=0. Replies posted today:
+(no replies posted today)
+
+Change: none. The automated review only reports since 2026-09-12; caps, RELEVANCE_MIN and tier promotions are changed by hand.
+
+## 2026-11-05 09:58 — automated daily review, numbers by code
+
+```
+X metrics — 2026-11-05
+
+  followers        n/a
+  replies sent     0
+  inbound replies  0   <- north star
+  likes given      0
+  follows made     0
+  posts published  0
+  tier hit rate    n/a (no replies)   <- share of replies aimed at the target list
+
+  target list      5/150  (t1 3, t2 1, t3 1, t4 0)
+  candidates       494 awaiting human review in x_target_candidates.json
+  like cap         0/5 handles at 5 likes this week
+
+  7-day totals (1 days recorded)
+    replies 0   inbound 0   likes 0   follows 0   posts 0
+    avg tier hit rate 0%
+```
+
+Target list: tier_1_inner=3, tier_2_founders=1, tier_3_vc=1, tier_4_peers=0. Replies posted today:
+(no replies posted today)
+
+Change: none. The automated review only reports since 2026-09-12; caps, RELEVANCE_MIN and tier promotions are changed by hand.
+
+## 2026-11-06 08:00 — automated daily review, numbers by code
+
+```
+X metrics — 2026-11-06
+
+  followers        n/a
+  replies sent     0
+  inbound replies  0   <- north star
+  likes given      0
+  follows made     0
+  posts published  0
+  tier hit rate    n/a (no replies)   <- share of replies aimed at the target list
+
+  target list      5/150  (t1 3, t2 1, t3 1, t4 0)
+  candidates       494 awaiting human review in x_target_candidates.json
+  like cap         0/5 handles at 5 likes this week
+
+  7-day totals (0 days recorded)
+```
+
+Target list: tier_1_inner=3, tier_2_founders=1, tier_3_vc=1, tier_4_peers=0. Replies posted today:
+(no replies posted today)
+
+Change: none. The automated review only reports since 2026-09-12; caps, RELEVANCE_MIN and tier promotions are changed by hand.
+
+## 2026-11-08 08:00 — automated daily review, numbers by code
+
+```
+X metrics — 2026-11-08
+
+  followers        n/a
+  replies sent     0
+  inbound replies  0   <- north star
+  likes given      0
+  follows made     0
+  posts published  0
+  tier hit rate    n/a (no replies)   <- share of replies aimed at the target list
+
+  target list      5/150  (t1 3, t2 1, t3 1, t4 0)
+  candidates       494 awaiting human review in x_target_candidates.json
+  like cap         0/5 handles at 5 likes this week
+
+  7-day totals (0 days recorded)
+```
+
+Target list: tier_1_inner=3, tier_2_founders=1, tier_3_vc=1, tier_4_peers=0. Replies posted today:
+(no replies posted today)
+
+Change: none. The automated review only reports since 2026-09-12; caps, RELEVANCE_MIN and tier promotions are changed by hand.
+
+## 2026-11-09 08:00 — automated daily review, numbers by code
+
+```
+X metrics — 2026-11-09
+
+  followers        n/a
+  replies sent     0
+  inbound replies  0   <- north star
+  likes given      0
+  follows made     0
+  posts published  0
+  tier hit rate    n/a (no replies)   <- share of replies aimed at the target list
+
+  target list      5/150  (t1 3, t2 1, t3 1, t4 0)
+  candidates       494 awaiting human review in x_target_candidates.json
+  like cap         0/5 handles at 5 likes this week
+
+  7-day totals (0 days recorded)
+```
+
+Target list: tier_1_inner=3, tier_2_founders=1, tier_3_vc=1, tier_4_peers=0. Replies posted today:
+(no replies posted today)
+
+Change: none. The automated review only reports since 2026-09-12; caps, RELEVANCE_MIN and tier promotions are changed by hand.
+
+## 2026-11-11 08:24 — automated daily review, numbers by code
+
+```
+X metrics — 2026-11-11
+
+  followers        n/a
+  replies sent     0
+  inbound replies  0   <- north star
+  likes given      0
+  follows made     0
+  posts published  0
+  tier hit rate    n/a (no replies)   <- share of replies aimed at the target list
+
+  target list      5/150  (t1 3, t2 1, t3 1, t4 0)
+  candidates       494 awaiting human review in x_target_candidates.json
+  like cap         0/5 handles at 5 likes this week
+
+  7-day totals (0 days recorded)
+```
+
+Target list: tier_1_inner=3, tier_2_founders=1, tier_3_vc=1, tier_4_peers=0. Replies posted today:
+(no replies posted today)
+
+Change: none. The automated review only reports since 2026-09-12; caps, RELEVANCE_MIN and tier promotions are changed by hand.
+
+## 2026-11-12 11:38 — automated daily review, numbers by code
+
+```
+X metrics — 2026-11-12
+
+  followers        n/a
+  replies sent     0
+  inbound replies  0   <- north star
+  likes given      0
+  follows made     0
+  posts published  0
+  tier hit rate    n/a (no replies)   <- share of replies aimed at the target list
+
+  target list      5/150  (t1 3, t2 1, t3 1, t4 0)
+  candidates       494 awaiting human review in x_target_candidates.json
+  like cap         0/5 handles at 5 likes this week
+
+  7-day totals (0 days recorded)
+```
+
+Target list: tier_1_inner=3, tier_2_founders=1, tier_3_vc=1, tier_4_peers=0. Replies posted today:
+(no replies posted today)
+
+Change: none. The automated review only reports since 2026-09-12; caps, RELEVANCE_MIN and tier promotions are changed by hand.
+
+## 2026-11-13 08:00 — automated daily review, numbers by code
+
+```
+X metrics — 2026-11-13
+
+  followers        n/a
+  replies sent     0
+  inbound replies  0   <- north star
+  likes given      0
+  follows made     0
+  posts published  0
+  tier hit rate    n/a (no replies)   <- share of replies aimed at the target list
+
+  target list      5/150  (t1 3, t2 1, t3 1, t4 0)
+  candidates       494 awaiting human review in x_target_candidates.json
+  like cap         0/5 handles at 5 likes this week
+
+  7-day totals (0 days recorded)
+```
+
+Target list: tier_1_inner=3, tier_2_founders=1, tier_3_vc=1, tier_4_peers=0. Replies posted today:
+(no replies posted today)
+
+Change: none. The automated review only reports since 2026-09-12; caps, RELEVANCE_MIN and tier promotions are changed by hand.
+
+## 2026-11-14 08:21 — automated daily review, numbers by code
+
+```
+X metrics — 2026-11-14
+
+  followers        n/a
+  replies sent     0
+  inbound replies  0   <- north star
+  likes given      0
+  follows made     0
+  posts published  0
+  tier hit rate    n/a (no replies)   <- share of replies aimed at the target list
+
+  target list      5/150  (t1 3, t2 1, t3 1, t4 0)
+  candidates       494 awaiting human review in x_target_candidates.json
+  like cap         0/5 handles at 5 likes this week
+
+  7-day totals (0 days recorded)
+```
+
+Target list: tier_1_inner=3, tier_2_founders=1, tier_3_vc=1, tier_4_peers=0. Replies posted today:
+(no replies posted today)
+
+Change: none. The automated review only reports since 2026-09-12; caps, RELEVANCE_MIN and tier promotions are changed by hand.
